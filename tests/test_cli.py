@@ -308,3 +308,104 @@ def test_cli_build_dataset_parquet(tmp_path, capsys) -> None:
     assert exit_code == 0
     assert out_path.exists()
     assert str(out_path) in captured.out
+
+
+def test_cli_plot_embedding(tmp_path, capsys) -> None:
+    dataset = _make_dataset()
+    in_path = tmp_path / "toy.h5"
+    out_prefix = tmp_path / "fig_embedding"
+    dataset.save_h5(in_path)
+
+    exit_code = main([
+        "plot-embedding",
+        "--in",
+        str(in_path),
+        "--embedding-key",
+        "X_pca",
+        "--color",
+        "group",
+        "--out-prefix",
+        str(out_prefix),
+    ])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert str(out_prefix) in captured.out
+    assert out_prefix.with_suffix(".png").exists()
+    assert out_prefix.with_suffix(".svg").exists()
+
+
+def test_cli_plot_roc(tmp_path, capsys) -> None:
+    table = pd.DataFrame({"y_true": [0, 0, 1, 1], "y_score": [0.1, 0.3, 0.7, 0.9]})
+    table_path = tmp_path / "roc.csv"
+    out_prefix = tmp_path / "fig_roc"
+    table.to_csv(table_path, index=False)
+
+    exit_code = main([
+        "plot-roc",
+        "--input",
+        str(table_path),
+        "--y-true-col",
+        "y_true",
+        "--y-score-col",
+        "y_score",
+        "--out-prefix",
+        str(out_prefix),
+    ])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert str(out_prefix) in captured.out
+    assert out_prefix.with_suffix(".png").exists()
+    assert out_prefix.with_suffix(".svg").exists()
+
+
+def test_cli_plot_confusion_matrix_failure_missing_column(tmp_path, capsys) -> None:
+    table = pd.DataFrame({"y_true": [0, 1], "wrong": [0, 1]})
+    table_path = tmp_path / "cm.csv"
+    out_prefix = tmp_path / "fig_cm"
+    table.to_csv(table_path, index=False)
+
+    exit_code = main([
+        "plot-confusion-matrix",
+        "--input",
+        str(table_path),
+        "--y-true-col",
+        "y_true",
+        "--y-pred-col",
+        "y_pred",
+        "--out-prefix",
+        str(out_prefix),
+    ])
+    captured = capsys.readouterr()
+
+    assert exit_code == 1
+    assert "PLOT_CONFUSION_MATRIX_FAILED:" in captured.err
+
+
+def test_cli_plot_regression_residuals(tmp_path, capsys) -> None:
+    table = pd.DataFrame({"y_true": [1.0, 2.0, 3.0], "y_pred": [0.9, 2.1, 2.8]})
+    table_path = tmp_path / "resid.csv"
+    out_prefix = tmp_path / "fig_resid"
+    table.to_csv(table_path, index=False)
+
+    exit_code = main([
+        "plot-regression-residuals",
+        "--input",
+        str(table_path),
+        "--y-true-col",
+        "y_true",
+        "--y-pred-col",
+        "y_pred",
+        "--out-prefix",
+        str(out_prefix),
+        "--fontsize",
+        "15",
+        "--no-svg",
+    ])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert str(out_prefix) in captured.out
+    assert out_prefix.with_suffix(".png").exists()
+    assert not out_prefix.with_suffix(".svg").exists()

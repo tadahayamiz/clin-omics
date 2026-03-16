@@ -19,6 +19,7 @@ dependencies = [
   "h5py",
   "scikit-learn",
   "networkx",
+  "matplotlib",
 ]
 
 [project.scripts]
