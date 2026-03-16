@@ -1,65 +1,49 @@
-# ===================================================================
-#  ビルドシステムの設定 (このセクションは基本的にこのまま使います)
-# ===================================================================
 [build-system]
-# パッケージのビルドに最低限必要なライブラリを指定します。
 requires = ["setuptools>=61.0"]
-# パッケージをビルドするためのバックエンドを指定します。
 build-backend = "setuptools.build_meta"
 
-
-# ===================================================================
-#  プロジェクトの基本情報
-# ===================================================================
 [project]
-# パッケージ名 (src/以下のディレクトリ名と合わせます)
-name = "my_project"
-# バージョン
+name = "clin-omics"
 version = "0.1.0"
-# プロジェクトの短い説明
-description = "A short description of the project."
-# README.mdファイルへのパス
+description = "Reusable framework for clinical and omics data integration, curation, and analysis."
 readme = "README.md"
-# 対応するPythonのバージョン
 requires-python = ">=3.9"
-# 作者の情報
 authors = [
-  { name="Your Name", email="your.email@example.com" },
+  { name = "Tadahaya Mizuno" },
 ]
-# ライセンス
-license = { text="MIT" }
-
-
-# -------------------------------------------------------------------
-#  依存ライブラリ (コア)
-# -------------------------------------------------------------------
-# このプロジェクトの実行に「必須」のライブラリを記述します。
-# `pip install .` でインストールされます。
+license = { text = "MIT" }
 dependencies = [
-    "numpy",
-    "pandas",
-    "scikit-learn",
-    "tqdm",
-    "matplotlib",
+  "numpy",
+  "pandas",
+  "h5py",
+  "scikit-learn",
+  "networkx",
 ]
 
+[project.scripts]
+clin-omics = "clin_omics.cli:main"
 
-# ===================================================================
-#  追加の依存ライブラリ
-# ===================================================================
 [project.optional-dependencies]
-# 開発時にのみ使うライブラリをここにまとめます。
-# `pip install -e ".[dev]"` のように `[dev]` を付けてインストールします。
-dev = [
-    # Notebook環境
-    "jupyterlab",
-    "ipykernel",
-
-    # コードフォーマッタ・リンタ
-    "black",  # フォーマッタ
-    "ruff",   # リンタ & フォーマッタ
-    "isort",  # import文のソート
-
-    # テスト
-    # "pytest",
+anndata = [
+  "anndata",
 ]
+leiden = [
+  "igraph",
+  "leidenalg",
+]
+dev = [
+  "pytest",
+  "black",
+  "ruff",
+  "isort",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

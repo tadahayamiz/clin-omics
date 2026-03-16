@@ -1,0 +1,3 @@
+SCHEMA_VERSION = "0.1"
+REQUIRED_OBS_ID_COLUMN = "sample_id"
+REQUIRED_VAR_ID_COLUMN = "feature_id"
