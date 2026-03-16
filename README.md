@@ -126,7 +126,7 @@ clin-omics build-dataset \
 ```
 
 This command is intentionally narrow in scope.
-It does **not** try to perform long-to-matrix conversion, metadata cleaning, or exploratory preprocessing.
+It does not try to perform long-to-matrix conversion, metadata cleaning, or exploratory preprocessing.
 Those should be done interactively beforehand.
 
 ---

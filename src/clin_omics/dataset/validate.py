@@ -1,10 +1,17 @@
 from __future__ import annotations
 
 import pandas as pd
+from pandas.api.types import is_numeric_dtype
 
 from clin_omics.constants import REQUIRED_OBS_ID_COLUMN, REQUIRED_VAR_ID_COLUMN
 from clin_omics.exceptions import SchemaValidationError
 from clin_omics.schema import validate_layer_shapes, validate_obs_table, validate_var_table
+
+
+def _ensure_numeric_frame(frame: pd.DataFrame, label: str) -> None:
+    non_numeric = [col for col in frame.columns if not is_numeric_dtype(frame[col])]
+    if non_numeric:
+        raise SchemaValidationError(f"{label} must contain only numeric columns: {non_numeric}")
 
 
 def _validate_embedding_frames(
@@ -13,6 +20,7 @@ def _validate_embedding_frames(
     for name, frame in embeddings.items():
         if not isinstance(frame, pd.DataFrame):
             raise SchemaValidationError(f"Embedding '{name}' must be a pandas DataFrame.")
+        _ensure_numeric_frame(frame, f"Embedding '{name}'")
         if frame.index.tolist() != expected_index:
             raise SchemaValidationError(
                 f"Embedding '{name}' index must exactly match obs['sample_id'] in order."
@@ -27,6 +35,7 @@ def _validate_feature_score_frames(
             raise SchemaValidationError(
                 f"Feature score '{name}' must be a pandas DataFrame."
             )
+        _ensure_numeric_frame(frame, f"Feature score '{name}'")
         if frame.index.tolist() != expected_index:
             raise SchemaValidationError(
                 f"Feature score '{name}' index must exactly match var['feature_id'] in order."
@@ -60,6 +69,8 @@ def validate_dataset_components(
     if not isinstance(X, pd.DataFrame):
         raise SchemaValidationError("X must be a pandas DataFrame.")
 
+    _ensure_numeric_frame(X, "X")
+
     expected_shape = (len(validated_obs), len(validated_var))
     if X.shape != expected_shape:
         raise SchemaValidationError(
@@ -82,6 +93,7 @@ def validate_dataset_components(
     validate_layer_shapes(layers or {}, n_obs=expected_shape[0], n_var=expected_shape[1])
 
     for name, layer in (layers or {}).items():
+        _ensure_numeric_frame(layer, f"Layer '{name}'")
         if layer.index.tolist() != expected_index:
             raise SchemaValidationError(
                 f"Layer '{name}' index must exactly match obs['sample_id'] in order."
