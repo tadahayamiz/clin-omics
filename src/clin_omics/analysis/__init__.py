@@ -1,5 +1,5 @@
 from .clustering import HierarchicalClustering, KMeansClustering, KNNLeidenClustering
-from .embeddings import FactorAnalysisEmbedding, PCAEmbedding
+from .embeddings import FactorAnalysisEmbedding, PCAEmbedding, UMAPEmbedding
 from .qc import summarize_dataset_qc
 
 __all__ = [
@@ -8,5 +8,6 @@ __all__ = [
     "KMeansClustering",
     "KNNLeidenClustering",
     "PCAEmbedding",
+    "UMAPEmbedding",
     "summarize_dataset_qc",
 ]

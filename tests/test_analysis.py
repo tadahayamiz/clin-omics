@@ -5,6 +5,7 @@ from clin_omics.analysis import (
     HierarchicalClustering,
     KMeansClustering,
     PCAEmbedding,
+    UMAPEmbedding,
     summarize_dataset_qc,
 )
 from clin_omics.dataset import CanonicalDataset
@@ -75,3 +76,43 @@ def test_unsupervised_workflow_runs_end_to_end() -> None:
 
     assert "pca" in result.embeddings
     assert "cluster_kmeans" in result.assignments
+
+
+class _DummyUMAP:
+    def __init__(self, n_components: int, n_neighbors: int, min_dist: float, random_state: int | None):
+        self.n_components = n_components
+        self.n_neighbors = n_neighbors
+        self.min_dist = min_dist
+        self.random_state = random_state
+
+    def fit_transform(self, matrix):
+        return matrix[:, : self.n_components]
+
+
+def test_umap_embedding_adds_embedding_from_X(monkeypatch) -> None:
+    monkeypatch.setattr("clin_omics.analysis.embeddings.UMAP", _DummyUMAP)
+
+    dataset = make_dataset()
+    result = UMAPEmbedding(n_components=2, random_state=0, n_neighbors=2).fit_transform(dataset)
+
+    assert "umap" in result.embeddings
+    assert result.embeddings["umap"].shape == (4, 2)
+    assert result.embeddings["umap"].index.tolist() == ["s1", "s2", "s3", "s4"]
+    assert result.embeddings["umap"].columns.tolist() == ["UMAP1", "UMAP2"]
+
+
+def test_umap_embedding_uses_source_layer(monkeypatch) -> None:
+    monkeypatch.setattr("clin_omics.analysis.embeddings.UMAP", _DummyUMAP)
+
+    dataset = PCAEmbedding(n_components=2, key="pca").fit_transform(make_dataset())
+    result = UMAPEmbedding(
+        n_components=2,
+        source_layer="pca",
+        key="umap_from_pca",
+        random_state=0,
+        n_neighbors=2,
+    ).fit_transform(dataset)
+
+    assert "umap_from_pca" in result.embeddings
+    assert result.embeddings["umap_from_pca"].shape == (4, 2)
+    assert result.embeddings["umap_from_pca"].index.tolist() == dataset.embeddings["pca"].index.tolist()

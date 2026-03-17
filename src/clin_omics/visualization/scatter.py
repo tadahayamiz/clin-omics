@@ -20,12 +20,23 @@ def _resolve_embedding(dataset: CanonicalDataset, embedding_key: str) -> pd.Data
     return embedding
 
 
+def _resolve_color_values(dataset: CanonicalDataset, embedding: pd.DataFrame, color: str) -> pd.Series:
+    if color in dataset.obs.columns:
+        return dataset.obs.set_index("sample_id").loc[embedding.index, color]
+    if color in dataset.assignments:
+        return dataset.assignments[color].reindex(embedding.index)
+    raise ClinOmicsError(f"Unknown color key: {color}. Expected an obs column or assignment key.")
+
+
 def plot_embedding(
     dataset: CanonicalDataset,
     *,
     embedding_key: str,
     color: str | None = None,
     title: str | None = None,
+    alpha: float = 1.0,
+    size: float = 40.0,
+    show_legend: bool = True,
     config: PlotConfig | dict | None = None,
     out_prefix: str | Path | None = None,
 ):
@@ -36,22 +47,21 @@ def plot_embedding(
     x = embedding.iloc[:, 0]
     y = embedding.iloc[:, 1]
 
-    scatter_kwargs = {}
+    scatter_kwargs = {"alpha": float(alpha), "s": float(size)}
     if color is not None:
-        if color not in dataset.obs.columns:
-            raise ClinOmicsError(f"Unknown obs column for color: {color}")
-        color_values = dataset.obs.set_index('sample_id').loc[embedding.index, color]
+        color_values = _resolve_color_values(dataset, embedding, color)
         if pd.api.types.is_numeric_dtype(color_values):
-            scatter = ax.scatter(x, y, c=color_values.to_numpy(), s=40)
+            scatter = ax.scatter(x, y, c=color_values.to_numpy(), **scatter_kwargs)
             fig.colorbar(scatter, ax=ax)
         else:
-            categories = pd.Series(color_values, dtype='object').fillna('NA')
+            categories = pd.Series(color_values, dtype="object").fillna("NA")
             for category in categories.unique().tolist():
                 mask = categories == category
-                ax.scatter(x[mask], y[mask], s=40, label=str(category), **scatter_kwargs)
-            ax.legend(fontsize=resolved.legend_fontsize)
+                ax.scatter(x[mask], y[mask], label=str(category), **scatter_kwargs)
+            if show_legend:
+                ax.legend(fontsize=resolved.legend_fontsize)
     else:
-        ax.scatter(x, y, s=40, **scatter_kwargs)
+        ax.scatter(x, y, **scatter_kwargs)
 
     ax.set_xlabel(str(embedding.columns[0]), fontsize=resolved.label_fontsize)
     ax.set_ylabel(str(embedding.columns[1]), fontsize=resolved.label_fontsize)

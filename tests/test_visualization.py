@@ -60,3 +60,35 @@ def test_plot_embedding_numeric_color(tmp_path: Path) -> None:
     assert ax.get_ylabel() == "PC2"
     assert out_prefix.with_suffix(".png").exists()
     assert out_prefix.with_suffix(".svg").exists()
+
+
+def test_plot_embedding_assignment_color(tmp_path: Path) -> None:
+    ds = make_dataset()
+    ds.assignments["cluster_kmeans"] = pd.Series([0, 0, 1, 1], index=ds.X.index, name="cluster_kmeans")
+    out_prefix = tmp_path / "plots" / "pca_assignment"
+    fig, ax = plot_embedding(ds, embedding_key="pca", color="cluster_kmeans", out_prefix=out_prefix)
+    assert fig is not None
+    assert ax.get_xlabel() == "PC1"
+    assert out_prefix.with_suffix(".png").exists()
+    assert out_prefix.with_suffix(".svg").exists()
+
+
+def test_plot_embedding_unknown_color_key_raises() -> None:
+    ds = make_dataset()
+    try:
+        plot_embedding(ds, embedding_key="pca", color="missing_key")
+    except Exception as exc:
+        assert "Unknown color key" in str(exc)
+        assert "obs column or assignment key" in str(exc)
+    else:
+        raise AssertionError("Expected plot_embedding to fail for an unknown color key")
+
+
+def test_plot_embedding_honors_alpha_size_and_no_legend() -> None:
+    ds = make_dataset()
+    fig, ax = plot_embedding(ds, embedding_key="pca", color="group", alpha=0.25, size=12.0, show_legend=False)
+    collections = ax.collections
+    assert collections, "Expected scatter collections to be present"
+    assert collections[0].get_alpha() == 0.25
+    assert collections[0].get_sizes().tolist() == [12.0]
+    assert ax.get_legend() is None

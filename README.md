@@ -141,8 +141,12 @@ clin-omics inspect <dataset.h5>
 clin-omics validate <dataset.h5>
 clin-omics build-dataset --x ... --obs ... --var ... --out ...
 clin-omics pca --in ... --out ...
+clin-omics factor-analysis --in ... --out ...
+clin-omics umap --in ... --out ...
 clin-omics cluster-kmeans --in ... --out ... --n-clusters ...
 clin-omics cluster-knn-leiden --in ... --out ... --neighbors ... --resolution ...
+clin-omics plot-embedding --in ... --embedding-key ... --out-prefix ...
+clin-omics export-assignments --in ... --key ... --out ...
 ```
 
 ### `version`
@@ -170,6 +174,11 @@ Prints a JSON summary including:
 - feature scores
 - assignments
 - provenance keys
+- `n_samples` / `n_features`
+- `layer_shapes`
+- `embedding_shapes`
+- `feature_score_shapes`
+- `assignment_lengths`
 
 ### `validate`
 
@@ -263,6 +272,50 @@ done
 ```
 
 Note: `cluster-knn-leiden` requires `igraph` and `leidenalg` at runtime.
+
+
+### Recommended bulk-omics workflow
+
+A practical default workflow for bulk omics is:
+
+1. curate `X / obs / var`
+2. build a canonical dataset
+3. run PCA or factor analysis for compact representations
+4. run `cluster-kmeans` or `cluster-knn-leiden`
+5. run UMAP mainly for visualization
+6. use `plot-embedding --color <assignment_key>` to inspect clusters
+7. use `export-assignments` to recover a sample-level cluster table
+
+Example:
+
+```bash
+clin-omics pca --in dataset.h5 --out dataset_pca.h5 --n-components 10 --key pca
+clin-omics cluster-knn-leiden --in dataset_pca.h5 --out dataset_leiden.h5 --embedding-key pca --neighbors 15 --resolution 1.0
+clin-omics umap --in dataset_pca.h5 --out dataset_umap.h5 --embedding-key pca --key umap --random-state 0
+clin-omics plot-embedding --in dataset_umap.h5 --embedding-key umap --color cluster_knn_leiden --out-prefix out/umap_by_leiden
+clin-omics export-assignments --in dataset_leiden.h5 --key cluster_knn_leiden --out cluster_knn_leiden.csv
+```
+
+---
+
+## Colab notes
+
+When using the CLI from Colab, the common pitfalls are:
+
+- use `%pip install -e .` instead of plain `pip install -e .`
+- CLI command names use kebab-case, for example `factor-analysis` and `plot-embedding`
+- shell variables such as `$DATASET` only expand inside shell cells like `%%bash` or commands starting with `!`
+
+Example:
+
+```python
+%pip install -e .
+```
+
+```bash
+!clin-omics inspect dataset.h5
+!clin-omics factor-analysis --in dataset.h5 --out dataset_fa.h5 --n-components 5 --key factor_analysis
+```
 
 ---
 
@@ -413,6 +466,7 @@ Available analysis components:
 from clin_omics.analysis import (
     PCAEmbedding,
     FactorAnalysisEmbedding,
+    UMAPEmbedding,
     KMeansClustering,
     KNNLeidenClustering,
     HierarchicalClustering,
@@ -427,6 +481,15 @@ from clin_omics.analysis import PCAEmbedding, KMeansClustering
 
 pca_dataset = PCAEmbedding(n_components=10, key="pca").fit_transform(dataset)
 clustered = KMeansClustering(n_clusters=5, embedding_key="pca").fit_predict(pca_dataset)
+```
+
+Example: factor analysis + UMAP for visualization.
+
+```python
+from clin_omics.analysis import FactorAnalysisEmbedding, UMAPEmbedding
+
+fa_dataset = FactorAnalysisEmbedding(n_components=10, key="factor_analysis").fit_transform(dataset)
+vis_dataset = UMAPEmbedding(n_components=2, source_layer="factor_analysis", key="umap").fit_transform(fa_dataset)
 ```
 
 Example: QC summary.
