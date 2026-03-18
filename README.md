@@ -151,6 +151,88 @@ This command is intentionally narrow in scope.
 It does not try to perform long-to-matrix conversion, metadata cleaning, or exploratory preprocessing.
 Those should be done interactively beforehand.
 
+### Bulk RNA-seq flow scripts
+
+Reusable end-to-end flow logic lives under `src/clin_omics/workflows/`, while `scripts/` is reserved for thin shell runners.
+They are intended for standard, repeatable table-to-dataset-to-analysis runs,
+including Colab usage, rather than one-off experiment notebooks.
+
+Current bulk RNA-seq flows:
+
+- `clin_omics.workflows.bulk_rnaseq_basic`
+  - canonical dataset construction
+  - bulk RNA-seq preprocessing
+  - PCA on `log_cpm`
+  - optional k-means and optional UMAP
+- `clin_omics.workflows.bulk_rnaseq_graph`
+  - canonical dataset construction
+  - bulk RNA-seq preprocessing
+  - PCA on `log_cpm`
+  - kNN graph + Leiden clustering
+  - optional UMAP
+
+The matching shell wrappers are:
+
+- `scripts/run_bulk_rnaseq_basic.sh`
+- `scripts/run_bulk_rnaseq_graph.sh`
+
+HVG selection is intentionally **not** part of the default bulk RNA-seq flow.
+For bulk RNA-seq, it is better treated as an optional refinement than as a required first step.
+
+#### Basic flow
+
+```bash
+bash scripts/run_bulk_rnaseq_basic.sh   /content/project/assay.csv   /content/project/obs.csv   /content/project/var.csv   /content/project/basic_out   --min-count 10   --min-samples 2   --make-zscore
+```
+
+This helper will:
+
+- build a canonical dataset from `X / obs / var`
+- run `BulkRNASeqPreprocessor`
+- run PCA on `log_cpm`
+- run a small k-means clustering on the PCA embedding by default
+- save `pca_basic` figures as both PNG and SVG
+- write `bulk_rnaseq_basic_summary.json` and `cluster_kmeans_basic.csv`
+
+Outputs are written under the requested output directory, including:
+
+- `bulk_rnaseq_basic_input_dataset.h5`
+- `bulk_rnaseq_basic_processed_dataset.h5`
+- `bulk_rnaseq_basic_summary.json`
+- `cluster_kmeans_basic.csv`
+- `pca_basic.png`
+- `pca_basic.svg`
+
+Add `--run-umap` if you also want a quick UMAP check on `log_cpm`.
+Add `--skip-kmeans` if you only want preprocessing + PCA outputs.
+
+#### Graph flow
+
+```bash
+bash scripts/run_bulk_rnaseq_graph.sh   /content/project/assay.csv   /content/project/obs.csv   /content/project/var.csv   /content/project/graph_out   --min-count 10   --min-samples 2   --n-pca-components 10   --leiden-neighbors 15   --leiden-resolution 1.0   --run-umap
+```
+
+This flow adds graph-based clustering after PCA and writes `cluster_leiden_graph.csv`.
+It requires the optional Leiden dependencies:
+
+```bash
+pip install -e ".[leiden]"
+```
+
+#### Colab-oriented one-cell snippets
+
+Basic flow in one cell after cloning the repo and changing into the repo root:
+
+```bash
+pip install -e . && bash scripts/run_bulk_rnaseq_basic.sh /content/project/assay.csv /content/project/obs.csv /content/project/var.csv /content/project/basic_out --min-count 10 --min-samples 2 --make-zscore --run-umap
+```
+
+Graph flow in one cell:
+
+```bash
+pip install -e ".[leiden]" && bash scripts/run_bulk_rnaseq_graph.sh /content/project/assay.csv /content/project/obs.csv /content/project/var.csv /content/project/graph_out --min-count 10 --min-samples 2 --n-pca-components 10 --leiden-neighbors 15 --leiden-resolution 1.0 --run-umap
+```
+
 ---
 
 ## CLI overview
@@ -600,4 +682,4 @@ Please contact tadahaya[at]gmail.com before publishing your paper using the cont
 ## Contact
 If you have any questions or comments, please feel free to create an issue on github here, or email us:  
 - tadahaya[at]gmail.com  
-    - lead contact  
+    - lead contact
