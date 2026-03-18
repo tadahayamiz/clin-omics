@@ -12,6 +12,33 @@ from clin_omics.preprocess import BulkRNASeqPreprocessor
 from clin_omics.visualization import plot_embedding
 
 
+def _normalize_x_table(X, sample_id_col: str):
+    if sample_id_col in X.columns:
+        X_norm = X.set_index(sample_id_col)
+    else:
+        first_col = X.columns[0]
+        candidate = X[first_col]
+        if candidate.isna().any():
+            raise ValueError(f"Missing sample IDs in X column: {first_col}")
+        if candidate.duplicated().any():
+            dup = candidate[candidate.duplicated()].astype(str).tolist()[:5]
+            raise ValueError(
+                "Unable to infer sample IDs from X. "
+                f"Column '{first_col}' contains duplicates. Example: {dup}"
+            )
+        X_norm = X.set_index(first_col)
+
+    if X_norm.index.isna().any():
+        raise ValueError("X index contains missing sample IDs.")
+    if X_norm.index.duplicated().any():
+        dup = X_norm.index[X_norm.index.duplicated()].astype(str).tolist()[:5]
+        raise ValueError(f"X contains duplicate sample IDs. Example: {dup}")
+
+    X_norm.index = X_norm.index.astype(str)
+    X_norm.index.name = "sample_id"
+    return X_norm
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Run the basic bulk RNA-seq flow on count tables.",
@@ -51,17 +78,23 @@ def _prepare_dataset(
     obs = read_table(obs_path)
     var = read_table(var_path)
 
-    if sample_id_col not in X.columns:
-        raise ValueError(f"Missing sample ID column in X: {sample_id_col}")
     if sample_id_col not in obs.columns:
         raise ValueError(f"Missing sample ID column in obs: {sample_id_col}")
     if feature_id_col not in var.columns:
         raise ValueError(f"Missing feature ID column in var: {feature_id_col}")
 
-    X = X.set_index(sample_id_col)
-    X.index.name = "sample_id"
+    X = _normalize_x_table(X, sample_id_col)
     obs_indexed = obs.set_index(sample_id_col)
+    obs_indexed.index = obs_indexed.index.astype(str)
     obs_indexed.index.name = "sample_id"
+
+    missing_samples = [sample for sample in X.index if sample not in obs_indexed.index]
+    if missing_samples:
+        preview = ", ".join(missing_samples[:5])
+        raise ValueError(
+            f"obs is missing samples present in X ({len(missing_samples)} missing). Example: {preview}"
+        )
+
     obs_indexed = obs_indexed.loc[X.index].reset_index()
 
     missing_features = [feature for feature in X.columns if feature not in set(var[feature_id_col].tolist())]

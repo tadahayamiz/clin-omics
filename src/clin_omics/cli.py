@@ -245,20 +245,45 @@ def _cmd_validate(args: argparse.Namespace) -> int:
     return 0
 
 
+def _normalize_x_table_for_cli(X: pd.DataFrame, sample_id_col: str) -> pd.DataFrame:
+    if sample_id_col in X.columns:
+        X_norm = X.set_index(sample_id_col)
+    else:
+        first_col = X.columns[0]
+        candidate = X[first_col]
+        if candidate.isna().any():
+            raise ValueError(f"Missing sample IDs in X column: {first_col}")
+        if candidate.duplicated().any():
+            dup = candidate[candidate.duplicated()].astype(str).tolist()[:5]
+            raise ValueError(
+                "Unable to infer sample IDs from X. "
+                f"Column '{first_col}' contains duplicates. Example: {dup}"
+            )
+        X_norm = X.set_index(first_col)
+
+    if X_norm.index.isna().any():
+        raise ValueError("X index contains missing sample IDs.")
+    if X_norm.index.duplicated().any():
+        dup = X_norm.index[X_norm.index.duplicated()].astype(str).tolist()[:5]
+        raise ValueError(f"X contains duplicate sample IDs. Example: {dup}")
+
+    X_norm.index = X_norm.index.astype(str)
+    X_norm.index.name = "sample_id"
+    return X_norm
+
+
 def _cmd_build_dataset(args: argparse.Namespace) -> int:
     try:
         X = read_table(args.x)
         obs = read_table(args.obs)
         var = read_table(args.var)
 
-        if args.sample_id_col not in X.columns:
-            raise ValueError(f"Missing sample ID column in X: {args.sample_id_col}")
         if args.sample_id_col not in obs.columns:
             raise ValueError(f"Missing sample ID column in obs: {args.sample_id_col}")
         if args.feature_id_col not in var.columns:
             raise ValueError(f"Missing feature ID column in var: {args.feature_id_col}")
 
-        X = X.set_index(args.sample_id_col)
+        X = _normalize_x_table_for_cli(X, args.sample_id_col)
 
         if args.sample_id_col != "sample_id":
             obs = obs.rename(columns={args.sample_id_col: "sample_id"})

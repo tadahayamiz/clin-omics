@@ -126,7 +126,7 @@ def test_cli_build_dataset(tmp_path, capsys) -> None:
 
 
 def test_cli_build_dataset_failure(tmp_path, capsys) -> None:
-    X = pd.DataFrame({"wrong_id": ["s1"], "f1": [1.0]})
+    X = pd.DataFrame({"wrong_id": ["s1", "s1"], "f1": [1.0, 2.0]})
     obs = pd.DataFrame({"sample_id": ["s1"]})
     var = pd.DataFrame({"feature_id": ["f1"]})
 
@@ -716,3 +716,45 @@ def test_cli_cluster_knn_leiden_rejects_embedding_key_and_source_layer(tmp_path,
 
     assert exit_code == 2
     assert "not allowed with argument" in captured.err
+
+
+def test_cli_build_dataset_accepts_index_style_x(tmp_path, capsys) -> None:
+    X = pd.DataFrame(
+        {
+            "f1": [1.0, 3.0],
+            "f2": [2.0, 4.0],
+        },
+        index=["s1", "s2"],
+    )
+    obs = pd.DataFrame({"sample_id": ["s1", "s2"], "group": ["A", "B"]})
+    var = pd.DataFrame({"feature_id": ["f1", "f2"], "feature_name": ["g1", "g2"]})
+
+    x_path = tmp_path / "X.csv"
+    obs_path = tmp_path / "obs.csv"
+    var_path = tmp_path / "var.csv"
+    out_path = tmp_path / "dataset.h5"
+
+    X.to_csv(x_path, index=True)
+    obs.to_csv(obs_path, index=False)
+    var.to_csv(var_path, index=False)
+
+    exit_code = main([
+        "build-dataset",
+        "--x",
+        str(x_path),
+        "--obs",
+        str(obs_path),
+        "--var",
+        str(var_path),
+        "--out",
+        str(out_path),
+    ])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert out_path.exists()
+    assert str(out_path) in captured.out
+
+    dataset = CanonicalDataset.load_h5(out_path)
+    assert dataset.X.index.tolist() == ["s1", "s2"]
+    assert dataset.X.columns.tolist() == ["f1", "f2"]
