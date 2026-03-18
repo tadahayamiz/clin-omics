@@ -27,6 +27,26 @@ def make_dataset() -> CanonicalDataset:
     return CanonicalDataset(X=X, obs=obs, var=var)
 
 
+def make_dataset_with_derived() -> CanonicalDataset:
+    dataset = make_dataset()
+    dataset.layers["baseline"] = dataset.X.copy() * 10.0
+    dataset.embeddings["pca"] = pd.DataFrame(
+        [[0.1, 1.0], [0.2, 2.0], [0.3, 3.0]],
+        index=dataset.obs["sample_id"].tolist(),
+        columns=["PC1", "PC2"],
+    )
+    dataset.feature_scores["importance"] = pd.DataFrame(
+        {"score": [0.5, 0.2, 0.9]},
+        index=dataset.var["feature_id"].tolist(),
+    )
+    dataset.assignments["clusters"] = pd.Series(
+        [0, 0, 1],
+        index=dataset.obs["sample_id"].tolist(),
+        name="clusters",
+    )
+    return dataset
+
+
 def test_log1p_transform_to_new_layer() -> None:
     dataset = make_dataset()
     transformed = Log1pTransform(target="log1p").fit_transform(dataset)
@@ -165,3 +185,70 @@ def test_bulk_rnaseq_preprocessor_can_add_zscore_layer() -> None:
         np.zeros(transformed.layers["zscore_log_cpm"].shape[1]),
         atol=1e-8,
     )
+
+
+def test_base_preprocessor_preserves_derived_artifacts() -> None:
+    dataset = make_dataset_with_derived()
+
+    transformed = Log1pTransform(target="log1p").fit_transform(dataset)
+
+    assert transformed.embeddings["pca"].equals(dataset.embeddings["pca"])
+    assert transformed.feature_scores["importance"].equals(dataset.feature_scores["importance"])
+    assert transformed.assignments["clusters"].equals(dataset.assignments["clusters"])
+
+
+def test_filter_low_expression_subsets_feature_artifacts_and_preserves_sample_artifacts() -> None:
+    dataset = make_dataset_with_derived()
+    dataset.X = pd.DataFrame(
+        [[0.0, 10.0, 5.0], [1.0, 12.0, 0.0], [0.0, 8.0, 11.0]],
+        index=["s1", "s2", "s3"],
+        columns=["f1", "f2", "f3"],
+    )
+    dataset.layers["baseline"] = dataset.X.copy() * 10.0
+
+    filtered = FilterLowExpression(min_count=10.0, min_samples=2).fit_transform(dataset)
+
+    assert filtered.X.columns.tolist() == ["f2"]
+    assert filtered.layers["baseline"].columns.tolist() == ["f2"]
+    assert filtered.feature_scores["importance"].index.tolist() == ["f2"]
+    assert filtered.embeddings["pca"].equals(dataset.embeddings["pca"])
+    assert filtered.assignments["clusters"].equals(dataset.assignments["clusters"])
+
+
+def test_preprocess_pipeline_preserves_derived_artifacts_with_bulk_steps() -> None:
+    dataset = make_dataset_with_derived()
+    dataset.X = pd.DataFrame(
+        [[0.0, 10.0, 5.0], [1.0, 12.0, 0.0], [0.0, 8.0, 11.0]],
+        index=["s1", "s2", "s3"],
+        columns=["f1", "f2", "f3"],
+    )
+    dataset.layers["baseline"] = dataset.X.copy() * 10.0
+
+    pipeline = PreprocessPipeline(
+        steps=[
+            ("filter", FilterLowExpression(min_count=10.0, min_samples=2)),
+            ("logcpm", LogCPMTransform(target="log_cpm")),
+        ]
+    )
+
+    transformed = pipeline.fit_transform(dataset)
+
+    assert transformed.X.columns.tolist() == ["f2"]
+    assert "log_cpm" in transformed.layers
+    assert transformed.embeddings["pca"].equals(dataset.embeddings["pca"])
+    assert transformed.assignments["clusters"].equals(dataset.assignments["clusters"])
+    assert transformed.feature_scores["importance"].index.tolist() == ["f2"]
+
+
+def test_bulk_rnaseq_preprocessor_zscore_matches_log_cpm_scaling() -> None:
+    dataset = make_dataset()
+
+    transformed = BulkRNASeqPreprocessor(make_zscore=True).fit_transform(dataset)
+
+    log_cpm = transformed.layers["log_cpm"]
+    expected = (log_cpm - log_cpm.mean(axis=0)) / log_cpm.std(axis=0, ddof=0).replace(0.0, 1.0)
+    np.testing.assert_allclose(
+        transformed.layers["zscore_log_cpm"].to_numpy(),
+        expected.to_numpy(),
+    )
+    assert transformed.X.equals(transformed.layers["counts_filtered"])

@@ -10,6 +10,13 @@ from clin_omics.preprocess.base import BasePreprocessor
 
 @dataclass
 class ZScoreScaler(BasePreprocessor):
+    """Column-wise z-score scaling for continuous matrices.
+
+    This transform is generic and can be applied to ``X`` or to any numeric
+    layer specified via ``source_layer`` / ``target``. For bulk RNA-seq, it is
+    best used as a downstream visualization helper after ``LogCPMTransform``
+    rather than as the primary normalization step for counts.
+    """
     ddof: int = 0
     means_: pd.Series = field(init=False)
     stds_: pd.Series = field(init=False)

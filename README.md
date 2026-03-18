@@ -31,6 +31,28 @@ The repository intentionally separates:
 In particular, trial-and-error-heavy preprocessing is not the responsibility of the CLI.
 The CLI starts to become useful after `X / obs / var` are already reasonably well prepared.
 
+### Bulk RNA-seq preprocessing notes
+
+For bulk RNA-seq, this package now provides lightweight preprocessing helpers for
+count matrices:
+
+- `FilterLowExpression`: keep features with enough non-trivial counts
+- `CPMNormalizer`: library-size normalization to CPM
+- `LogCPMTransform`: exploratory `log2(CPM + prior_count)` representation
+- `BulkRNASeqPreprocessor`: convenience wrapper that creates `counts_raw`,
+  `counts_filtered`, `cpm`, `log_cpm`, and optional `zscore_log_cpm` layers
+
+Recommended usage by task:
+
+- DEG / differential expression: keep raw or filtered counts and use an
+  external count-aware workflow such as DESeq2, edgeR, or limma-voom
+- PCA / clustering / sample networks / gene co-expression: use `log_cpm`
+- heatmaps of selected features: optionally use `zscore_log_cpm`
+
+`ZScoreScaler` remains available as a generic transform, but for bulk RNA-seq it
+should usually be treated as a visualization helper applied after `log_cpm`, not
+as the primary normalization step for counts.
+
 ---
 
 ## Package layout
@@ -294,27 +316,6 @@ clin-omics cluster-knn-leiden --in dataset_pca.h5 --out dataset_leiden.h5 --embe
 clin-omics umap --in dataset_pca.h5 --out dataset_umap.h5 --embedding-key pca --key umap --random-state 0
 clin-omics plot-embedding --in dataset_umap.h5 --embedding-key umap --color cluster_knn_leiden --out-prefix out/umap_by_leiden
 clin-omics export-assignments --in dataset_leiden.h5 --key cluster_knn_leiden --out cluster_knn_leiden.csv
-```
-
----
-
-## Colab notes
-
-When using the CLI from Colab, the common pitfalls are:
-
-- use `%pip install -e .` instead of plain `pip install -e .`
-- CLI command names use kebab-case, for example `factor-analysis` and `plot-embedding`
-- shell variables such as `$DATASET` only expand inside shell cells like `%%bash` or commands starting with `!`
-
-Example:
-
-```python
-%pip install -e .
-```
-
-```bash
-!clin-omics inspect dataset.h5
-!clin-omics factor-analysis --in dataset.h5 --out dataset_fa.h5 --n-components 5 --key factor_analysis
 ```
 
 ---

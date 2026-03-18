@@ -12,6 +12,12 @@ from clin_omics.preprocess.scaling import ZScoreScaler
 
 @dataclass
 class FilterLowExpression(BasePreprocessor):
+    """Drop low-expression features from a count matrix.
+
+    A feature is kept when at least ``min_samples`` samples have counts greater
+    than or equal to ``min_count``. This is intended for raw or non-negative
+    count-like bulk RNA-seq matrices.
+    """
     min_count: float = 10.0
     min_samples: int = 1
     keep_features_: list[str] = field(init=False, default_factory=list)
@@ -32,6 +38,14 @@ class FilterLowExpression(BasePreprocessor):
     ) -> CanonicalDataset:
         keep_columns = transformed.columns.tolist()
         new_var = dataset.var.set_index("feature_id").loc[keep_columns].reset_index()
+        new_layers = {
+            name: layer.loc[:, keep_columns].copy()
+            for name, layer in dataset.layers.items()
+        }
+        new_feature_scores = {
+            name: frame.loc[keep_columns].copy()
+            for name, frame in dataset.feature_scores.items()
+        }
         new_provenance = dict(dataset.provenance)
         history = list(new_provenance.get("transform_history", []))
         history.append(self._history_entry())
@@ -41,14 +55,22 @@ class FilterLowExpression(BasePreprocessor):
             X=transformed,
             obs=dataset.obs.copy(),
             var=new_var,
-            layers={},
+            layers=new_layers,
             provenance=new_provenance,
             dataset_id=dataset.dataset_id,
+            embeddings={name: frame.copy() for name, frame in dataset.embeddings.items()},
+            feature_scores=new_feature_scores,
+            assignments={name: series.copy() for name, series in dataset.assignments.items()},
         )
 
 
 @dataclass
 class CPMNormalizer(BasePreprocessor):
+    """Convert counts to counts per million (CPM).
+
+    This performs library-size normalization across samples and is mainly a
+    helper for downstream exploratory analysis layers such as ``log_cpm``.
+    """
     scale_factor: float = 1_000_000.0
 
     def _transform_frame(self, frame: pd.DataFrame) -> pd.DataFrame:
@@ -61,6 +83,12 @@ class CPMNormalizer(BasePreprocessor):
 
 @dataclass
 class LogCPMTransform(BasePreprocessor):
+    """Transform non-negative counts into log2(CPM + prior_count).
+
+    This is a practical bulk RNA-seq representation for PCA, clustering, sample
+    networks, and gene co-expression analyses. It is not intended to replace
+    count-aware DEG workflows such as DESeq2, edgeR, or limma-voom.
+    """
     scale_factor: float = 1_000_000.0
     prior_count: float = 1.0
 
@@ -80,6 +108,18 @@ class LogCPMTransform(BasePreprocessor):
 
 @dataclass
 class BulkRNASeqPreprocessor:
+    """Convenience wrapper for a minimal bulk RNA-seq preprocessing flow.
+
+    The recommended sequence is:
+
+    1. low-expression filtering on counts
+    2. CPM layer generation
+    3. logCPM layer generation
+    4. optional gene-wise z-score layer from logCPM
+
+    The resulting dataset keeps ``X`` on the filtered count scale while writing
+    derived exploratory layers such as ``log_cpm`` and ``zscore_log_cpm``.
+    """
     min_count: float = 10.0
     min_samples: int = 1
     cpm_target: str = "cpm"

@@ -64,6 +64,9 @@ class BasePreprocessor(ABC):
             layers=new_layers,
             provenance=new_provenance,
             dataset_id=dataset.dataset_id,
+            embeddings={name: frame.copy() for name, frame in dataset.embeddings.items()},
+            feature_scores={name: frame.copy() for name, frame in dataset.feature_scores.items()},
+            assignments={name: series.copy() for name, series in dataset.assignments.items()},
         )
 
     def _history_entry(self) -> dict[str, Any]:
