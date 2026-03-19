@@ -1,14 +1,21 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
-import sys
 from pathlib import Path
 
 import pandas as pd
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+def _subprocess_env() -> dict[str, str]:
+    env = dict(os.environ)
+    existing = env.get("PYTHONPATH", "")
+    env["PYTHONPATH"] = f"{REPO_ROOT / 'src'}{os.pathsep}{existing}" if existing else str(REPO_ROOT / 'src')
+    return env
 
 
 def test_bulk_rnaseq_smoke_script_runs(tmp_path: Path) -> None:
@@ -43,15 +50,11 @@ def test_bulk_rnaseq_smoke_script_runs(tmp_path: Path) -> None:
 
     result = subprocess.run(
         [
-            sys.executable,
-            str(REPO_ROOT / "scripts" / "smoke_bulk_rnaseq.py"),
-            "--x",
+            "bash",
+            str(REPO_ROOT / "scripts" / "run_bulk_rnaseq_basic.sh"),
             str(x_path),
-            "--obs",
             str(obs_path),
-            "--var",
             str(var_path),
-            "--outdir",
             str(outdir),
             "--min-count",
             "10",
@@ -60,6 +63,7 @@ def test_bulk_rnaseq_smoke_script_runs(tmp_path: Path) -> None:
             "--make-zscore",
         ],
         cwd=REPO_ROOT,
+        env=_subprocess_env(),
         capture_output=True,
         text=True,
         check=True,
@@ -69,12 +73,12 @@ def test_bulk_rnaseq_smoke_script_runs(tmp_path: Path) -> None:
     assert summary["n_samples"] == 4
     assert summary["n_features"] == 2
     assert "log_cpm" in summary["layers"]
-    assert "pca_smoke" in summary["embeddings"]
-    assert "cluster_kmeans_smoke" in summary["assignments"]
+    assert "pca_basic" in summary["embeddings"]
+    assert "cluster_kmeans_basic" in summary["assignments"]
 
-    assert (outdir / "smoke_input_dataset.h5").exists()
-    assert (outdir / "smoke_processed_dataset.h5").exists()
-    assert (outdir / "smoke_summary.json").exists()
-    assert (outdir / "cluster_kmeans_smoke.csv").exists()
-    assert (outdir / "pca_smoke.png").exists()
-    assert (outdir / "pca_smoke.svg").exists()
+    assert (outdir / "bulk_rnaseq_basic_input_dataset.h5").exists()
+    assert (outdir / "bulk_rnaseq_basic_processed_dataset.h5").exists()
+    assert (outdir / "bulk_rnaseq_basic_summary.json").exists()
+    assert (outdir / "cluster_kmeans_basic.csv").exists()
+    assert (outdir / "pca_basic.png").exists()
+    assert (outdir / "pca_basic.svg").exists()

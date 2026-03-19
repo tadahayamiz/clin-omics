@@ -118,11 +118,20 @@ def test_bulk_rnaseq_graph_flow_runs_with_fake_leiden_modules(tmp_path, monkeypa
     assert processed.assignments["cluster_leiden_graph"].tolist() == [0, 1, 0, 1]
 
 
-def test_bulk_rnaseq_graph_flow_rejects_missing_leiden_dependencies(tmp_path) -> None:
+def test_bulk_rnaseq_graph_flow_rejects_missing_leiden_dependencies(tmp_path, monkeypatch) -> None:
     from clin_omics.workflows.bulk_rnaseq_graph import main
 
     x_path, obs_path, var_path = _write_toy_tables(tmp_path)
     outdir = tmp_path / "graph_out_missing"
+
+    real_import_module = importlib.import_module
+
+    def fake_import_module(name, package=None):
+        if name in {"igraph", "leidenalg"}:
+            raise ModuleNotFoundError(name)
+        return real_import_module(name, package)
+
+    monkeypatch.setattr(importlib, "import_module", fake_import_module)
 
     try:
         main([
