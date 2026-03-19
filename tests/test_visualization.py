@@ -73,6 +73,32 @@ def test_plot_embedding_assignment_color(tmp_path: Path) -> None:
     assert out_prefix.with_suffix(".svg").exists()
 
 
+
+
+def test_plot_embedding_assignment_color_uses_categorical_legend(tmp_path: Path) -> None:
+    ds = make_dataset()
+    ds.assignments["cluster_kmeans"] = pd.Series([0, 0, 1, 1], index=ds.X.index, name="cluster_kmeans")
+    out_prefix = tmp_path / "plots" / "pca_assignment_legend"
+    fig, ax = plot_embedding(ds, embedding_key="pca", color="cluster_kmeans", out_prefix=out_prefix)
+    assert fig is not None
+    legend = ax.get_legend()
+    assert legend is not None
+    labels = [text.get_text() for text in legend.get_texts()]
+    assert labels == ["0", "1"]
+
+
+def test_plot_embedding_numeric_color_with_missing_shows_na_legend(tmp_path: Path) -> None:
+    ds = make_dataset()
+    ds.obs.loc[1, "score"] = pd.NA
+    out_prefix = tmp_path / "plots" / "pca_numeric_missing"
+    fig, ax = plot_embedding(ds, embedding_key="pca", color="score", out_prefix=out_prefix)
+    assert fig is not None
+    legend = ax.get_legend()
+    assert legend is not None
+    labels = [text.get_text() for text in legend.get_texts()]
+    assert labels == ["NA"]
+
+
 def test_plot_embedding_unknown_color_key_raises() -> None:
     ds = make_dataset()
     try:
