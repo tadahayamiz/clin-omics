@@ -36,6 +36,10 @@ def _build_plot_config(args: argparse.Namespace) -> PlotConfig | dict:
         config["marker_edge_width"] = float(args.marker_edge_width)
     if args.alpha is not None:
         config["alpha"] = float(args.alpha)
+    if getattr(args, "xscale", None) is not None:
+        config["xscale"] = str(args.xscale)
+    if getattr(args, "yscale", None) is not None:
+        config["yscale"] = str(args.yscale)
     if args.show_top_spine is not None:
         config["show_top_spine"] = bool(args.show_top_spine)
     if args.show_right_spine is not None:

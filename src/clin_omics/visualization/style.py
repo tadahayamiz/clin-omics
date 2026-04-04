@@ -35,6 +35,7 @@ class PlotConfig:
     line_width: float = 1.0
     alpha: float = 0.9
     jitter: float = 0.12
+    xscale: str = "linear"
     yscale: str = "linear"
     show_top_spine: bool = False
     show_right_spine: bool = False

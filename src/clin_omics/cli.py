@@ -106,6 +106,10 @@ def _feature_vs_feature_plot_config_from_args(args: argparse.Namespace) -> dict:
         config["marker_edge_width"] = float(args.marker_edge_width)
     if getattr(args, "alpha", None) is not None:
         config["alpha"] = float(args.alpha)
+    if getattr(args, "xscale", None) is not None:
+        config["xscale"] = str(args.xscale)
+    if getattr(args, "yscale", None) is not None:
+        config["yscale"] = str(args.yscale)
     if getattr(args, "show_top_spine", None) is not None:
         config["show_top_spine"] = bool(args.show_top_spine)
     if getattr(args, "show_right_spine", None) is not None:
@@ -260,6 +264,8 @@ def _build_parser() -> argparse.ArgumentParser:
     plot_feature_vs_feature_parser.add_argument("--marker", default=None, help="Marker style passed to matplotlib.")
     plot_feature_vs_feature_parser.add_argument("--marker-edge-width", type=float, default=None, help="Marker edge width.")
     plot_feature_vs_feature_parser.add_argument("--alpha", type=float, default=None, help="Point alpha transparency.")
+    plot_feature_vs_feature_parser.add_argument("--xscale", choices=["linear", "log", "symlog", "logit"], default=None, help="X-axis scale.")
+    plot_feature_vs_feature_parser.add_argument("--yscale", choices=["linear", "log", "symlog", "logit"], default=None, help="Y-axis scale.")
     plot_feature_vs_feature_parser.add_argument("--show-top-spine", dest="show_top_spine", action="store_true", default=None, help="Show the top spine.")
     plot_feature_vs_feature_parser.add_argument("--hide-top-spine", dest="show_top_spine", action="store_false", help="Hide the top spine.")
     plot_feature_vs_feature_parser.add_argument("--show-right-spine", dest="show_right_spine", action="store_true", default=None, help="Show the right spine.")
@@ -562,6 +568,8 @@ def _cmd_plot_feature_vs_feature(args: argparse.Namespace) -> int:
             marker=getattr(args, "marker", None),
             marker_edge_width=getattr(args, "marker_edge_width", None),
             alpha=getattr(args, "alpha", None),
+            xscale=getattr(args, "xscale", None),
+            yscale=getattr(args, "yscale", None),
             show_top_spine=getattr(args, "show_top_spine", None),
             show_right_spine=getattr(args, "show_right_spine", None),
         )

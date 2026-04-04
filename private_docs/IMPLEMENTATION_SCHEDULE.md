@@ -239,3 +239,8 @@ Keep the current plotting paths strict after C4/C5:
 ## 2026-04-04 bugfix
 - Fixed feature-vs-feature CLI failure handling for non-categorical numeric label fields.
 - Restored feature-vs-obs workflow compatibility when feature_lookup_col is absent on older callers/tests.
+
+
+## 2026-04-04 axis-scale follow-up
+- Added strict `xscale` / `yscale` support to `plot-feature-vs-feature` CLI, workflow, and visualization path.
+- Related focused tests updated for CLI acceptance and scatter config propagation.

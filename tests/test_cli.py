@@ -970,6 +970,41 @@ def test_cli_plot_feature_vs_feature(tmp_path, capsys) -> None:
     assert out_prefix.with_suffix(".png").exists()
 
 
+
+
+def test_cli_plot_feature_vs_feature_accepts_axis_scale_args(tmp_path, capsys) -> None:
+    dataset = _make_dataset()
+    dataset.obs["status"] = ["control", "treated"]
+    in_path = tmp_path / "toy_scales.h5"
+    out_prefix = tmp_path / "fig_feature_feature_scales"
+    dataset.save_h5(in_path)
+
+    exit_code = main([
+        "plot-feature-vs-feature",
+        "--in",
+        str(in_path),
+        "--x-feature",
+        "f1",
+        "--y-feature",
+        "f2",
+        "--label-field",
+        "status",
+        "--xscale",
+        "linear",
+        "--yscale",
+        "linear",
+        "--out-prefix",
+        str(out_prefix),
+    ])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    payload = json.loads(captured.out)
+    assert payload["x_feature"] == "f1"
+    assert payload["y_feature"] == "f2"
+    assert out_prefix.with_suffix(".png").exists()
+
+
 def test_cli_plot_feature_vs_feature_failure(tmp_path, capsys) -> None:
     dataset = _make_dataset()
     dataset.obs["score"] = [1.0, 2.0]

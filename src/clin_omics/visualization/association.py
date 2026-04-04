@@ -177,6 +177,8 @@ def plot_feature_vs_feature_scatter(
         fontsize=resolved.title_fontsize,
     )
     ax.tick_params(axis="both", labelsize=resolved.tick_fontsize)
+    ax.set_xscale(resolved.xscale)
+    ax.set_yscale(resolved.yscale)
     ax.spines["top"].set_visible(resolved.show_top_spine)
     ax.spines["right"].set_visible(resolved.show_right_spine)
 

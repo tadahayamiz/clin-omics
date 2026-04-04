@@ -102,6 +102,8 @@ def test_plot_feature_vs_feature_scatter_applies_style_and_saves_outputs(tmp_pat
             "marker": "^",
             "marker_edge_width": 0.5,
             "alpha": 0.4,
+            "xscale": "linear",
+            "yscale": "linear",
             "show_top_spine": False,
             "show_right_spine": False,
         },
@@ -110,6 +112,8 @@ def test_plot_feature_vs_feature_scatter_applies_style_and_saves_outputs(tmp_pat
     assert fig is not None
     assert ax.spines["top"].get_visible() is False
     assert ax.spines["right"].get_visible() is False
+    assert ax.get_xscale() == "linear"
+    assert ax.get_yscale() == "linear"
     assert summary["color_map"]["control"] == DEFAULT_CONTROL_COLOR
     assert summary["color_map"]["treated"] == "#123456"
     assert out_prefix.with_suffix(".png").exists()
@@ -163,6 +167,8 @@ def test_plot_feature_vs_feature_from_h5_workflow_runs(tmp_path: Path) -> None:
                 "marker": "s",
                 "marker_edge_width": 0.0,
                 "alpha": 0.6,
+                "xscale": "linear",
+                "yscale": "linear",
                 "show_top_spine": False,
                 "show_right_spine": False,
             },
