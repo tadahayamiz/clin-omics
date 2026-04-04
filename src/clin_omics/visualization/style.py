@@ -30,6 +30,8 @@ class PlotConfig:
     save_svg: bool = True
     bbox_inches: str = "tight"
     marker_size: float = 18.0
+    marker: str = "o"
+    marker_edge_width: float = 0.0
     line_width: float = 1.0
     alpha: float = 0.9
     jitter: float = 0.12

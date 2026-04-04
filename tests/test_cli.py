@@ -884,3 +884,113 @@ def test_cli_plot_feature_vs_obs_with_mann_whitney_failure_for_non_two_groups(tm
     assert exit_code == 1
     assert "PLOT_FEATURE_VS_OBS_FAILED:" in captured.err
     assert "exactly two groups" in captured.err
+
+
+def test_cli_plot_feature_vs_obs_with_feature_lookup_col(tmp_path, capsys) -> None:
+    X = pd.DataFrame(
+        [[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [7.0, 8.0]],
+        index=["s1", "s2", "s3", "s4"],
+        columns=["gene_a", "gene_b"],
+    )
+    obs = pd.DataFrame({"sample_id": ["s1", "s2", "s3", "s4"], "group": ["control", "control", "treated", "treated"]})
+    var = pd.DataFrame({"feature_id": ["gene_a", "gene_b"], "gene_symbol": ["GATA1", "MYC"]})
+    dataset = CanonicalDataset(X=X, obs=obs, var=var)
+    dataset_h5 = tmp_path / "dataset_lookup_cli.h5"
+    dataset.save_h5(dataset_h5)
+    out_prefix = tmp_path / "lookup_cli"
+
+    exit_code = main([
+        "plot-feature-vs-obs",
+        "--in",
+        str(dataset_h5),
+        "--feature",
+        "GATA1",
+        "--feature-lookup-col",
+        "gene_symbol",
+        "--obs-field",
+        "group",
+        "--out-prefix",
+        str(out_prefix),
+        "--no-svg",
+    ])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert str(out_prefix) in captured.out
+    assert out_prefix.with_suffix(".png").exists()
+    assert not out_prefix.with_suffix(".svg").exists()
+    summary_path = out_prefix.parent / f"{out_prefix.name}_summary.json"
+    payload = json.loads(summary_path.read_text(encoding="utf-8"))
+    assert payload["feature"] == "gene_a"
+    assert payload["feature_query"] == "GATA1"
+    assert payload["feature_lookup_col"] == "gene_symbol"
+
+
+def test_cli_plot_feature_vs_feature(tmp_path, capsys) -> None:
+    dataset = _make_dataset()
+    dataset.obs["status"] = ["control", "treated"]
+    dataset.var["gene_symbol"] = ["GATA1", "MYC"]
+    in_path = tmp_path / "toy.h5"
+    out_prefix = tmp_path / "fig_feature_feature"
+    dataset.save_h5(in_path)
+
+    exit_code = main([
+        "plot-feature-vs-feature",
+        "--in",
+        str(in_path),
+        "--x-feature",
+        "GATA1",
+        "--y-feature",
+        "MYC",
+        "--x-feature-lookup-col",
+        "gene_symbol",
+        "--y-feature-lookup-col",
+        "gene_symbol",
+        "--label-field",
+        "status",
+        "--control-label",
+        "control",
+        "--label-color",
+        "treated=#3366CC",
+        "--marker",
+        "^",
+        "--marker-size",
+        "20",
+        "--alpha",
+        "0.5",
+        "--out-prefix",
+        str(out_prefix),
+    ])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    payload = json.loads(captured.out)
+    assert payload["x_feature"] == "f1"
+    assert payload["y_feature"] == "f2"
+    assert out_prefix.with_suffix(".png").exists()
+
+
+def test_cli_plot_feature_vs_feature_failure(tmp_path, capsys) -> None:
+    dataset = _make_dataset()
+    dataset.obs["score"] = [1.0, 2.0]
+    in_path = tmp_path / "toy.h5"
+    out_prefix = tmp_path / "fig_feature_feature_fail"
+    dataset.save_h5(in_path)
+
+    exit_code = main([
+        "plot-feature-vs-feature",
+        "--in",
+        str(in_path),
+        "--x-feature",
+        "f1",
+        "--y-feature",
+        "f2",
+        "--label-field",
+        "score",
+        "--out-prefix",
+        str(out_prefix),
+    ])
+    captured = capsys.readouterr()
+
+    assert exit_code == 1
+    assert "PLOT_FEATURE_VS_FEATURE_FAILED:" in captured.err

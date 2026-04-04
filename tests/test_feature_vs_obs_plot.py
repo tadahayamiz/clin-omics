@@ -29,7 +29,11 @@ def make_dataset() -> CanonicalDataset:
             "continuous_score": [1.0, 2.0, 3.5, 4.2, 5.1],
         }
     )
-    var = pd.DataFrame({"feature_id": ["gene_a", "gene_b"]})
+    var = pd.DataFrame({
+        "feature_id": ["gene_a", "gene_b"],
+        "gene_symbol": ["GATA1", "MYC"],
+        "protein_name": ["Protein A", "Protein B"],
+    })
     layers = {"log": pd.DataFrame(X + 1.0, index=X.index, columns=X.columns)}
     return CanonicalDataset(X=X, obs=obs, var=var, layers=layers)
 
@@ -58,6 +62,90 @@ def test_prepare_feature_vs_obs_comparison_supports_layer_selection() -> None:
     values = comparison.data["value"].tolist()
     assert values == [11.0, 13.0, 10.0, 21.0]
 
+
+
+
+
+def test_prepare_feature_vs_obs_comparison_supports_var_lookup_column() -> None:
+    ds = make_dataset()
+    comparison = prepare_feature_vs_obs_comparison(
+        ds,
+        feature="GATA1",
+        feature_lookup_col="gene_symbol",
+        obs_field="group",
+    )
+    assert comparison.feature == "gene_a"
+    assert comparison.feature_query == "GATA1"
+    assert comparison.feature_lookup_col == "gene_symbol"
+    assert comparison.data["value"].tolist() == [10.0, 12.0, 9.0, 20.0]
+
+
+def test_prepare_feature_vs_obs_comparison_rejects_unknown_var_lookup_column() -> None:
+    ds = make_dataset()
+    with pytest.raises(Exception, match="Unknown var lookup column"):
+        prepare_feature_vs_obs_comparison(
+            ds,
+            feature="GATA1",
+            feature_lookup_col="missing_col",
+            obs_field="group",
+        )
+
+
+def test_prepare_feature_vs_obs_comparison_rejects_non_unique_var_lookup_match() -> None:
+    ds = make_dataset()
+    ds.var.loc[1, "gene_symbol"] = "GATA1"
+    with pytest.raises(Exception, match="matched multiple feature_id values"):
+        prepare_feature_vs_obs_comparison(
+            ds,
+            feature="GATA1",
+            feature_lookup_col="gene_symbol",
+            obs_field="group",
+        )
+
+
+def test_plot_feature_vs_obs_from_h5_workflow_runs_with_var_lookup_column(tmp_path: Path) -> None:
+    ds = make_dataset()
+    dataset_h5 = tmp_path / "dataset_lookup.h5"
+    outdir = tmp_path / "plots_lookup"
+    ds.save_h5(dataset_h5)
+
+    summary = run_plot_feature_vs_obs_from_h5(
+        type("Args", (), {
+            "dataset_h5": dataset_h5,
+            "feature": "GATA1",
+            "feature_lookup_col": "gene_symbol",
+            "obs_field": "group",
+            "outdir": outdir,
+            "layer": None,
+            "title": None,
+            "xlabel": None,
+            "ylabel": None,
+            "out_prefix_name": "gene_symbol_lookup",
+            "control_group": "control",
+            "group_order": ["control", "treated"],
+            "group_color": None,
+            "show_box": True,
+            "annotate_mann_whitney": False,
+            "fontsize": None,
+            "dpi": None,
+            "width": None,
+            "height": None,
+            "save_png": True,
+            "save_svg": False,
+            "marker_size": None,
+            "line_width": None,
+            "alpha": None,
+            "jitter": None,
+            "yscale": None,
+            "show_top_spine": False,
+            "show_right_spine": False,
+        })()
+    )
+
+    assert summary["feature"] == "gene_a"
+    assert summary["feature_query"] == "GATA1"
+    assert summary["feature_lookup_col"] == "gene_symbol"
+    assert (outdir / "gene_symbol_lookup.png").exists()
 
 
 def test_prepare_feature_vs_obs_comparison_rejects_continuous_numeric_obs_field() -> None:

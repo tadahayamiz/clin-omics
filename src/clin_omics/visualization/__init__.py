@@ -1,4 +1,4 @@
-from .association import plot_feature_vs_obs
+from .association import plot_feature_vs_feature_scatter, plot_feature_vs_obs
 from .evaluation import (
     plot_confusion_matrix,
     plot_pr_curve,
@@ -14,6 +14,7 @@ __all__ = [
     "PlotConfig",
     "plot_confusion_matrix",
     "plot_embedding",
+    "plot_feature_vs_feature_scatter",
     "plot_feature_vs_obs",
     "plot_obs_field",
     "plot_pr_curve",

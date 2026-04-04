@@ -1,9 +1,12 @@
 from .association import (
     FeatureObsComparison,
     MannWhitneyResult,
+    TwoFeatureScatterData,
     format_mann_whitney_label,
+    resolve_feature_id,
     mann_whitney_two_group,
     prepare_feature_vs_obs_comparison,
+    prepare_two_feature_scatter_data,
 )
 from .clustering import HierarchicalClustering, KMeansClustering, KNNLeidenClustering
 from .embeddings import FactorAnalysisEmbedding, PCAEmbedding, UMAPEmbedding
@@ -13,13 +16,16 @@ __all__ = [
     "FactorAnalysisEmbedding",
     "FeatureObsComparison",
     "MannWhitneyResult",
+    "TwoFeatureScatterData",
     "HierarchicalClustering",
     "KMeansClustering",
     "KNNLeidenClustering",
     "PCAEmbedding",
     "format_mann_whitney_label",
+    "resolve_feature_id",
     "mann_whitney_two_group",
     "UMAPEmbedding",
     "prepare_feature_vs_obs_comparison",
+    "prepare_two_feature_scatter_data",
     "summarize_dataset_qc",
 ]

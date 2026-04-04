@@ -251,6 +251,7 @@ clin-omics cluster-kmeans --in ... --out ... --n-clusters ...
 clin-omics cluster-knn-leiden --in ... --out ... --neighbors ... --resolution ...
 clin-omics plot-embedding --in ... --embedding-key ... --out-prefix ...
 clin-omics plot-feature-vs-obs --in ... --feature ... --obs-field ... --out-prefix ...
+clin-omics plot-feature-vs-feature --in ... --x-feature ... --y-feature ... --out-prefix ...
 clin-omics export-assignments --in ... --key ... --out ...
 ```
 
@@ -377,6 +378,57 @@ done
 ```
 
 Note: `cluster-knn-leiden` requires `igraph` and `leidenalg` at runtime.
+
+### `plot-feature-vs-feature`
+
+Use this when you want to inspect whether two marker features capture distinct patient tendencies, while optionally coloring patients by one categorical-like clinical label.
+
+Minimal example:
+
+```bash
+clin-omics plot-feature-vs-feature \
+  --in dataset.h5 \
+  --x-feature GATA1 \
+  --y-feature MYC \
+  --x-feature-lookup-col gene_symbol \
+  --y-feature-lookup-col gene_symbol \
+  --label-field response_group \
+  --control-label control \
+  --out-prefix results/gata1_vs_myc
+```
+
+Marker styling can be overridden explicitly:
+
+```bash
+clin-omics plot-feature-vs-feature \
+  --in dataset.h5 \
+  --x-feature gene_a \
+  --y-feature gene_b \
+  --label-field group \
+  --label-color treated=#3366CC \
+  --marker ^ \
+  --marker-size 24 \
+  --marker-edge-width 0.0 \
+  --alpha 0.6 \
+  --width 5.5 \
+  --height 4.5 \
+  --hide-top-spine \
+  --hide-right-spine \
+  --out-prefix results/gene_a_vs_gene_b
+```
+
+This command writes:
+
+- `gata1_vs_myc.png`
+- `gata1_vs_myc.svg`
+- `gata1_vs_myc_summary.json`
+
+Strict behavior:
+
+- `--x-feature` and `--y-feature` must resolve exactly to one feature each
+- optional `--label-field` must be categorical-like
+- rows with missing x, y, or label values are dropped with counts recorded in the summary JSON
+- top and right spines are hidden by default
 
 ### `plot-feature-vs-obs`
 

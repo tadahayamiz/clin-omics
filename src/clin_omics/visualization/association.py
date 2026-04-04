@@ -8,12 +8,12 @@ import numpy as np
 
 from clin_omics.analysis.association import (
     FeatureObsComparison,
+    TwoFeatureScatterData,
     format_mann_whitney_label,
     mann_whitney_two_group,
 )
 from clin_omics.visualization.save import save_figure
 from clin_omics.visualization.style import PlotConfig, resolve_group_colors, resolve_plot_config
-
 
 
 def plot_feature_vs_obs(
@@ -68,7 +68,8 @@ def plot_feature_vs_obs(
             s=resolved.marker_size,
             alpha=resolved.alpha,
             color=color_map[group],
-            linewidths=0.0,
+            linewidths=resolved.marker_edge_width,
+            marker=resolved.marker,
         )
 
     ax.set_xticks(np.arange(1, len(groups) + 1))
@@ -119,4 +120,74 @@ def plot_feature_vs_obs(
     return fig, ax, summary
 
 
-__all__ = ["plot_feature_vs_obs"]
+def plot_feature_vs_feature_scatter(
+    scatter_data: TwoFeatureScatterData,
+    *,
+    title: str | None = None,
+    xlabel: str | None = None,
+    ylabel: str | None = None,
+    control_label: str | None = None,
+    color_overrides: Mapping[str, str] | None = None,
+    config: PlotConfig | dict | None = None,
+    out_prefix: str | Path | None = None,
+    show_legend: bool = True,
+):
+    resolved = resolve_plot_config(config)
+    fig, ax = plt.subplots(figsize=resolved.figsize)
+
+    data = scatter_data.data.copy()
+    color_map: dict[str, str] | None = None
+    if scatter_data.label_field is not None and scatter_data.labels:
+        labels = list(scatter_data.labels)
+        color_map = resolve_group_colors(
+            labels,
+            control_group=control_label,
+            color_overrides=color_overrides,
+        )
+        for label in labels:
+            label_mask = data["label"].astype(str) == str(label)
+            subset = data.loc[label_mask]
+            ax.scatter(
+                subset["x_value"].to_numpy(dtype=float),
+                subset["y_value"].to_numpy(dtype=float),
+                s=resolved.marker_size,
+                alpha=resolved.alpha,
+                c=color_map[label],
+                marker=resolved.marker,
+                linewidths=resolved.marker_edge_width,
+                label=label,
+            )
+        if show_legend:
+            ax.legend(fontsize=resolved.legend_fontsize, frameon=False)
+    else:
+        ax.scatter(
+            data["x_value"].to_numpy(dtype=float),
+            data["y_value"].to_numpy(dtype=float),
+            s=resolved.marker_size,
+            alpha=resolved.alpha,
+            c=DEFAULT_SINGLE_COLOR,
+            marker=resolved.marker,
+            linewidths=resolved.marker_edge_width,
+        )
+
+    ax.set_xlabel(xlabel or scatter_data.x_feature, fontsize=resolved.label_fontsize)
+    ax.set_ylabel(ylabel or scatter_data.y_feature, fontsize=resolved.label_fontsize)
+    ax.set_title(
+        title or f"{scatter_data.x_feature} vs {scatter_data.y_feature} (n={scatter_data.n_used}/{scatter_data.n_total})",
+        fontsize=resolved.title_fontsize,
+    )
+    ax.tick_params(axis="both", labelsize=resolved.tick_fontsize)
+    ax.spines["top"].set_visible(resolved.show_top_spine)
+    ax.spines["right"].set_visible(resolved.show_right_spine)
+
+    save_figure(fig, out_prefix, config=resolved)
+    summary = scatter_data.to_summary() | {
+        "color_map": color_map,
+        "show_legend": bool(show_legend and scatter_data.label_field is not None and scatter_data.labels),
+    }
+    return fig, ax, summary
+
+
+DEFAULT_SINGLE_COLOR = "#4477AA"
+
+__all__ = ["plot_feature_vs_obs", "plot_feature_vs_feature_scatter"]

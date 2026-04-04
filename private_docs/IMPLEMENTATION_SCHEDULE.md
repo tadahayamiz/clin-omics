@@ -2,11 +2,11 @@
 
 ## Current interpretation lock
 
-- **Current main theme**: expose a minimal public usage/example surface for the feature-vs-obs plotting MVP.
-- **This turn scope**: Phase A7 only. Add minimal README/library examples and refresh schedule/handoff.
-- **Touched this turn**: public README plus minimal schedule/handoff refresh.
-- **Do not touch yet**: batch screening, multi-group inference, or broader association generalization.
-- **Current change type**: docs refresh.
+- **Current main theme**: add a minimal feature-vs-feature scatter plotting path for marker orthogonality inspection.
+- **This turn scope**: one strict plotting path only. Support two selected features on x/y axes, optional categorical-like point labels, styling overrides, and narrow H5 workflow/CLI integration.
+- **Touched this turn**: association extraction path, scatter visualization, H5 workflow/CLI surface, focused tests/smoke checks, and minimal public README refresh.
+- **Do not touch yet**: regression overlays, multi-marker screening, or broader association generalization.
+- **Current change type**: strict specification.
 
 ---
 
@@ -101,13 +101,51 @@ Goal: establish one strict, reusable plotting path for the figure family typifie
 
 ---
 
+
+### Phase C. Feature-vs-feature scatter for marker orthogonality
+
+Goal: establish one strict, reusable plotting path for the figure family typified by `marker A vs marker B`, with patients as points and an optional clinical label as point color.
+
+#### C1. Analysis contract and plotting contract
+- [x] Define a narrow analysis contract for extracting two aligned feature vectors
+- [x] Support `X` and explicit `layer` selection
+- [x] Support optional categorical-like `label_field` from `obs` for point colors
+- [x] Drop missing x / y / label values with explicit count reporting
+- [x] Support exact feature IDs and explicit `var`-column lookup for each axis
+
+#### C2. Visualization module
+- [x] Add feature-vs-feature scatter plotting in `src/clin_omics/visualization/association.py`
+- [x] Keep patients as points, with optional color by label
+- [x] Hide top/right spines by default
+- [x] Keep output routing compatible with existing save helpers
+
+#### C3. Styling and override surface
+- [x] Support figure size overrides
+- [x] Support marker size overrides
+- [x] Support marker shape overrides
+- [x] Support marker edge width overrides
+- [x] Support alpha overrides
+- [x] Support explicit label color overrides
+- [x] Use control gray / treated blue / Tol bright defaults when labels are present
+
+#### C4. Workflow and CLI entry point
+- [x] Add workflow entry point `plot_feature_vs_feature_from_h5.py`
+- [x] Add narrow CLI command `plot-feature-vs-feature`
+- [x] Keep CLI scope narrow: two features, one optional label field, one output prefix per call
+
+#### C5. Validation surface
+- [x] Add focused tests for feature resolution, alignment, and missing handling
+- [x] Add visualization tests for style overrides and output generation
+- [x] Add workflow and CLI smoke coverage
+- [ ] Run related pytest cleanly in a stable environment
+
 ### Phase B. Generalize after the MVP is stable
 
 Only start after Phase A is strict and tested.
 
 #### B1. Broader data source support
 - [ ] Support explicit `layer` selection
-- [ ] Consider `var`-based feature lookup helpers
+- [x] Consider `var`-based feature lookup helpers
 - [ ] Consider protein / gene naming alias resolution only if the canonical schema already supports it cleanly
 
 #### B2. Additional plot families
@@ -184,13 +222,15 @@ Keep all other modules untouched unless the first strict implementation proves t
 - [x] H5 workflow and CLI path added
 - [x] Remaining focused A6 tests added
 - [x] Public README updated
+- [x] Strict var-based feature lookup helper added for feature-vs-obs
+- [x] Strict feature-vs-feature scatter path added for marker orthogonality inspection
 
 ---
 
 ## Next one-theme task
 
-Implement **Phase B1 next only if needed**:
+Keep the current plotting paths strict after C4/C5:
 
-- keep the current plotting path strict
-- do not broaden into batch analysis or multi-group inference yet
-- consider only small source-surface improvements if an actual use case requires them
+- do not broaden into regression overlays or batch screening yet
+- consider label-shape or faceting only if a real use case now requires it
+- avoid heuristic alias resolution beyond explicit `var` column lookup
