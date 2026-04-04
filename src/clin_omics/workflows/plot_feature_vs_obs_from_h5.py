@@ -109,7 +109,7 @@ def run_plot_feature_vs_obs_from_h5(args: argparse.Namespace) -> dict[str, objec
         obs_field=args.obs_field,
         layer=args.layer,
         group_order=args.group_order,
-        feature_lookup_col=args.feature_lookup_col,
+        feature_lookup_col=getattr(args, "feature_lookup_col", None),
     )
     color_overrides = _parse_group_color(args.group_color)
     prefix_name = args.out_prefix_name or f"feature_vs_obs_{args.obs_field}_{args.feature}"

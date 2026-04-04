@@ -240,8 +240,8 @@ def _build_parser() -> argparse.ArgumentParser:
 
     plot_feature_vs_feature_parser = subparsers.add_parser("plot-feature-vs-feature", help="Plot one feature against another feature from an H5 dataset.")
     plot_feature_vs_feature_parser.add_argument("--in", dest="input_path", required=True, type=Path, help="Input dataset .h5 path.")
-    plot_feature_vs_feature_parser.add_argument("--x-feature", required=True, help="Feature name for the x-axis.")
-    plot_feature_vs_feature_parser.add_argument("--y-feature", required=True, help="Feature name for the y-axis.")
+    plot_feature_vs_feature_parser.add_argument("--x-feature", "--feature-x", dest="x_feature", required=True, help="Feature name for the x-axis.")
+    plot_feature_vs_feature_parser.add_argument("--y-feature", "--feature-y", dest="y_feature", required=True, help="Feature name for the y-axis.")
     plot_feature_vs_feature_parser.add_argument("--x-feature-lookup-col", default=None, help="Optional var column used to resolve --x-feature to a unique feature_id.")
     plot_feature_vs_feature_parser.add_argument("--y-feature-lookup-col", default=None, help="Optional var column used to resolve --y-feature to a unique feature_id.")
     plot_feature_vs_feature_parser.add_argument("--label-field", default=None, help="Optional categorical-like obs field used for point colors.")

@@ -158,7 +158,11 @@ def _is_supported_group_series(values: pd.Series) -> bool:
         return True
     unique = int(numeric.nunique())
     n_used = int(non_missing.shape[0])
-    return unique <= max(3, int(n_used ** 0.5))
+    if unique <= 2:
+        return True
+    # Treat mostly-unique numeric series as continuous, while allowing repeated
+    # numeric labels such as binary / low-cardinality coded groups.
+    return unique < n_used
 
 
 def _resolve_label_order(
@@ -174,7 +178,7 @@ def _resolve_label_order(
     requested = [str(v) for v in requested_order]
     missing = [label for label in requested if label not in present]
     if missing:
-        raise ClinOmicsError(f"Requested label_order contains labels absent after filtering: {missing}")
+        raise ClinOmicsError(f"group_order contains groups absent after filtering: {missing}")
     extras = [label for label in present if label not in requested]
     return tuple(requested + extras)
 
