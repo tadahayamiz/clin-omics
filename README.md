@@ -250,6 +250,7 @@ clin-omics umap --in ... --out ...
 clin-omics cluster-kmeans --in ... --out ... --n-clusters ...
 clin-omics cluster-knn-leiden --in ... --out ... --neighbors ... --resolution ...
 clin-omics plot-embedding --in ... --embedding-key ... --out-prefix ...
+clin-omics plot-feature-vs-obs --in ... --feature ... --obs-field ... --out-prefix ...
 clin-omics export-assignments --in ... --key ... --out ...
 ```
 
@@ -377,6 +378,70 @@ done
 
 Note: `cluster-knn-leiden` requires `igraph` and `leidenalg` at runtime.
 
+### `plot-feature-vs-obs`
+
+Use this when you already have a canonical dataset and want one publication-style comparison plot for:
+
+- one feature
+- one categorical-like `obs` grouping field
+- one output figure prefix
+
+Minimal example using `X` directly:
+
+```bash
+clin-omics plot-feature-vs-obs \
+  --in dataset.h5 \
+  --feature ALB \
+  --obs-field group \
+  --control-group control \
+  --out-prefix out/alb_by_group
+```
+
+Example using an explicit layer, custom order, and custom colors:
+
+```bash
+clin-omics plot-feature-vs-obs \
+  --in dataset.h5 \
+  --feature ALB \
+  --obs-field treatment_group \
+  --layer zscore \
+  --group-order control low_dose high_dose \
+  --group-color control=#9e9e9e \
+  --group-color low_dose=#56B4E9 \
+  --group-color high_dose=#0072B2 \
+  --ylabel "ALB (z-score)" \
+  --out-prefix out/alb_zscore_by_treatment
+```
+
+Example with two-group Mann-Whitney annotation:
+
+```bash
+clin-omics plot-feature-vs-obs \
+  --in dataset.h5 \
+  --feature CRP \
+  --obs-field responder \
+  --group-order no yes \
+  --annotate-mann-whitney \
+  --out-prefix out/crp_by_responder
+```
+
+Outputs per call:
+
+- `<out-prefix>.png`
+- `<out-prefix>.svg`
+- `<out-prefix>_summary.json`
+
+Current strict behavior:
+
+- supports `X` and one explicit `--layer`
+- requires a categorical-like grouping field
+- drops missing group / feature values with explicit counts in the summary JSON
+- aligns by `sample_id`, not by current obs row order
+- keeps top and right spines hidden by default
+- allows explicit group color overrides
+- supports `--annotate-mann-whitney` only for exact two-group plots
+
+This command is intentionally narrow. It is for one feature-at-a-time figure generation, not for association screening or batch inference.
 
 ### Recommended bulk-omics workflow
 
@@ -585,6 +650,58 @@ print(summary)
 ```
 
 ---
+
+### Feature-vs-obs plotting from Python
+
+Library-level entry point:
+
+```python
+from clin_omics.workflows import run_plot_feature_vs_obs_from_h5
+```
+
+Example:
+
+```python
+import argparse
+from pathlib import Path
+from clin_omics.workflows import run_plot_feature_vs_obs_from_h5
+
+summary = run_plot_feature_vs_obs_from_h5(
+    argparse.Namespace(
+        input_path=Path("dataset.h5"),
+        feature="ALB",
+        obs_field="group",
+        layer=None,
+        title=None,
+        xlabel=None,
+        ylabel=None,
+        control_group="control",
+        group_order=None,
+        group_color=None,
+        show_box=True,
+        annotate_mann_whitney=False,
+        out_prefix=Path("out/alb_by_group"),
+        figsize=(5.0, 4.0),
+        dpi=150,
+        fontsize=12.0,
+        title_fontsize=None,
+        label_fontsize=None,
+        tick_fontsize=None,
+        legend_fontsize=None,
+        marker_size=24.0,
+        line_width=1.0,
+        alpha=0.9,
+        jitter=0.08,
+        yscale="linear",
+        show_top_spine=False,
+        show_right_spine=False,
+    )
+)
+
+print(summary["group_counts"])
+```
+
+Use this workflow when you want the same strict plotting path as the CLI from a script or notebook.
 
 ### Supervised workflows
 

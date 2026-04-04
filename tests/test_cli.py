@@ -758,3 +758,129 @@ def test_cli_build_dataset_accepts_index_style_x(tmp_path, capsys) -> None:
     dataset = CanonicalDataset.load_h5(out_path)
     assert dataset.X.index.tolist() == ["s1", "s2"]
     assert dataset.X.columns.tolist() == ["f1", "f2"]
+
+
+def test_cli_plot_feature_vs_obs(tmp_path, capsys) -> None:
+    dataset = _make_dataset()
+    in_path = tmp_path / "toy.h5"
+    out_prefix = tmp_path / "plots" / "feature_group"
+    dataset.save_h5(in_path)
+
+    exit_code = main([
+        "plot-feature-vs-obs",
+        "--in",
+        str(in_path),
+        "--feature",
+        "f1",
+        "--obs-field",
+        "group",
+        "--control-group",
+        "A",
+        "--group-order",
+        "A",
+        "B",
+        "--group-color",
+        "B=#3366CC",
+        "--marker-size",
+        "22",
+        "--alpha",
+        "0.6",
+        "--jitter",
+        "0.03",
+        "--out-prefix",
+        str(out_prefix),
+    ])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert str(out_prefix) in captured.out
+    assert out_prefix.with_suffix(".png").exists()
+    assert out_prefix.with_suffix(".svg").exists()
+    summary_path = out_prefix.parent / f"{out_prefix.name}_summary.json"
+    assert summary_path.exists()
+    payload = json.loads(summary_path.read_text(encoding="utf-8"))
+    assert payload["feature"] == "f1"
+    assert payload["obs_field"] == "group"
+    assert payload["color_map"]["A"] == "#7F7F7F"
+    assert payload["color_map"]["B"] == "#3366CC"
+
+
+def test_cli_plot_feature_vs_obs_failure(tmp_path, capsys) -> None:
+    dataset = _make_dataset()
+    in_path = tmp_path / "toy.h5"
+    dataset.save_h5(in_path)
+
+    exit_code = main([
+        "plot-feature-vs-obs",
+        "--in",
+        str(in_path),
+        "--feature",
+        "missing_feature",
+        "--obs-field",
+        "group",
+        "--out-prefix",
+        str(tmp_path / "plots" / "bad"),
+    ])
+    captured = capsys.readouterr()
+
+    assert exit_code == 1
+    assert "PLOT_FEATURE_VS_OBS_FAILED:" in captured.err
+
+
+def test_cli_plot_feature_vs_obs_with_mann_whitney(tmp_path, capsys) -> None:
+    dataset = _make_dataset()
+    in_path = tmp_path / "toy.h5"
+    dataset.save_h5(in_path)
+    out_prefix = tmp_path / "plots" / "f1_group_mw"
+
+    exit_code = main([
+        "plot-feature-vs-obs",
+        "--in",
+        str(in_path),
+        "--feature",
+        "f1",
+        "--obs-field",
+        "group",
+        "--out-prefix",
+        str(out_prefix),
+        "--annotate-mann-whitney",
+        "--png",
+        "--no-svg",
+    ])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert str(out_prefix) in captured.out
+    assert out_prefix.with_suffix(".png").exists()
+    summary_path = out_prefix.parent / f"{out_prefix.name}_summary.json"
+    payload = json.loads(summary_path.read_text(encoding="utf-8"))
+    assert payload["stat_annotation"] is not None
+    assert payload["stat_annotation"]["test"] == "mann_whitney"
+
+
+def test_cli_plot_feature_vs_obs_with_mann_whitney_failure_for_non_two_groups(tmp_path, capsys) -> None:
+    obs = pd.DataFrame({"sample_id": ["s1", "s2", "s3"], "group": ["A", "B", "C"]})
+    var = pd.DataFrame({"feature_id": ["f1"], "feature_name": ["g1"]})
+    X = pd.DataFrame([[1.0], [2.0], [3.0]], index=["s1", "s2", "s3"], columns=["f1"])
+    dataset = CanonicalDataset(X=X, obs=obs, var=var)
+    in_path = tmp_path / "toy_three_groups.h5"
+    dataset.save_h5(in_path)
+    out_prefix = tmp_path / "plots" / "f1_group_mw_fail"
+
+    exit_code = main([
+        "plot-feature-vs-obs",
+        "--in",
+        str(in_path),
+        "--feature",
+        "f1",
+        "--obs-field",
+        "group",
+        "--out-prefix",
+        str(out_prefix),
+        "--annotate-mann-whitney",
+    ])
+    captured = capsys.readouterr()
+
+    assert exit_code == 1
+    assert "PLOT_FEATURE_VS_OBS_FAILED:" in captured.err
+    assert "exactly two groups" in captured.err

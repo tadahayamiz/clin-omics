@@ -14,6 +14,7 @@ from clin_omics.analysis import (
     PCAEmbedding,
     UMAPEmbedding,
 )
+from clin_omics.workflows.plot_feature_vs_obs_from_h5 import run_plot_feature_vs_obs_from_h5
 from clin_omics.dataset import CanonicalDataset
 from clin_omics.export import export_assignments_table
 from clin_omics.io import read_dataset_h5, read_table
@@ -58,6 +59,38 @@ def _plot_config_from_args(args: argparse.Namespace) -> dict:
         config["save_png"] = bool(args.save_png)
     if getattr(args, "save_svg", None) is not None:
         config["save_svg"] = bool(args.save_svg)
+    return config
+
+
+
+def _add_feature_vs_obs_plot_args(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--marker-size", type=float, default=None, help="Marker size for strip points.")
+    parser.add_argument("--line-width", type=float, default=None, help="Line width for box and summary elements.")
+    parser.add_argument("--alpha", type=float, default=None, help="Point alpha transparency.")
+    parser.add_argument("--jitter", type=float, default=None, help="Horizontal jitter strength.")
+    parser.add_argument("--yscale", choices=["linear", "log", "symlog", "logit"], default=None, help="Y-axis scale.")
+    parser.add_argument("--show-top-spine", dest="show_top_spine", action="store_true", default=None, help="Show the top spine.")
+    parser.add_argument("--hide-top-spine", dest="show_top_spine", action="store_false", help="Hide the top spine.")
+    parser.add_argument("--show-right-spine", dest="show_right_spine", action="store_true", default=None, help="Show the right spine.")
+    parser.add_argument("--hide-right-spine", dest="show_right_spine", action="store_false", help="Hide the right spine.")
+
+
+def _feature_vs_obs_plot_config_from_args(args: argparse.Namespace) -> dict:
+    config = _plot_config_from_args(args)
+    if getattr(args, "marker_size", None) is not None:
+        config["marker_size"] = float(args.marker_size)
+    if getattr(args, "line_width", None) is not None:
+        config["line_width"] = float(args.line_width)
+    if getattr(args, "alpha", None) is not None:
+        config["alpha"] = float(args.alpha)
+    if getattr(args, "jitter", None) is not None:
+        config["jitter"] = float(args.jitter)
+    if getattr(args, "yscale", None) is not None:
+        config["yscale"] = str(args.yscale)
+    if getattr(args, "show_top_spine", None) is not None:
+        config["show_top_spine"] = bool(args.show_top_spine)
+    if getattr(args, "show_right_spine", None) is not None:
+        config["show_right_spine"] = bool(args.show_right_spine)
     return config
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -165,6 +198,25 @@ def _build_parser() -> argparse.ArgumentParser:
     plot_embedding_parser.add_argument("--out-prefix", required=True, type=Path, help="Output path prefix without extension.")
     _add_plot_config_args(plot_embedding_parser)
     plot_embedding_parser.set_defaults(func=_cmd_plot_embedding)
+
+    plot_feature_vs_obs_parser = subparsers.add_parser("plot-feature-vs-obs", help="Plot one feature against one obs grouping field from an H5 dataset.")
+    plot_feature_vs_obs_parser.add_argument("--in", dest="input_path", required=True, type=Path, help="Input dataset .h5 path.")
+    plot_feature_vs_obs_parser.add_argument("--feature", required=True, help="Feature name from X or the selected layer.")
+    plot_feature_vs_obs_parser.add_argument("--obs-field", required=True, help="Categorical-like obs field used for grouping.")
+    plot_feature_vs_obs_parser.add_argument("--layer", default=None, help="Optional source layer. If omitted, use X.")
+    plot_feature_vs_obs_parser.add_argument("--title", default=None, help="Optional plot title override.")
+    plot_feature_vs_obs_parser.add_argument("--xlabel", default=None, help="Optional x-axis label override.")
+    plot_feature_vs_obs_parser.add_argument("--ylabel", default=None, help="Optional y-axis label override.")
+    plot_feature_vs_obs_parser.add_argument("--control-group", default=None, help="Optional control group name for default gray assignment.")
+    plot_feature_vs_obs_parser.add_argument("--group-order", nargs="+", default=None, help="Optional explicit group order.")
+    plot_feature_vs_obs_parser.add_argument("--group-color", action="append", default=None, help="Override a group color as GROUP=COLOR. Repeatable.")
+    plot_feature_vs_obs_parser.add_argument("--show-box", dest="show_box", action="store_true", default=True, help="Overlay a box summary.")
+    plot_feature_vs_obs_parser.add_argument("--no-box", dest="show_box", action="store_false", help="Disable box overlay.")
+    plot_feature_vs_obs_parser.add_argument("--annotate-mann-whitney", action="store_true", default=False, help="Add a two-group Mann-Whitney p-value annotation.")
+    plot_feature_vs_obs_parser.add_argument("--out-prefix", required=True, type=Path, help="Output path prefix without extension.")
+    _add_plot_config_args(plot_feature_vs_obs_parser)
+    _add_feature_vs_obs_plot_args(plot_feature_vs_obs_parser)
+    plot_feature_vs_obs_parser.set_defaults(func=_cmd_plot_feature_vs_obs)
 
     plot_roc_parser = subparsers.add_parser("plot-roc", help="Plot ROC curve from a table.")
     plot_roc_parser.add_argument("--input", required=True, type=Path, help="Input table path.")
@@ -428,6 +480,47 @@ def _cmd_plot_embedding(args: argparse.Namespace) -> int:
         print(f"PLOT_EMBEDDING_FAILED: {exc}", file=sys.stderr)
         return 1
     print(str(args.out_prefix))
+    return 0
+
+
+def _cmd_plot_feature_vs_obs(args: argparse.Namespace) -> int:
+    try:
+        out_prefix = Path(args.out_prefix)
+        summary = run_plot_feature_vs_obs_from_h5(
+            argparse.Namespace(
+                dataset_h5=args.input_path,
+                feature=args.feature,
+                obs_field=args.obs_field,
+                outdir=out_prefix.parent,
+                out_prefix_name=out_prefix.name,
+                layer=args.layer,
+                title=args.title,
+                xlabel=args.xlabel,
+                ylabel=args.ylabel,
+                control_group=args.control_group,
+                group_order=args.group_order,
+                group_color=args.group_color,
+                show_box=args.show_box,
+                annotate_mann_whitney=args.annotate_mann_whitney,
+                fontsize=args.fontsize,
+                dpi=args.dpi,
+                width=args.width,
+                height=args.height,
+                save_png=args.save_png,
+                save_svg=args.save_svg,
+                marker_size=args.marker_size,
+                line_width=args.line_width,
+                alpha=args.alpha,
+                jitter=args.jitter,
+                yscale=args.yscale,
+                show_top_spine=args.show_top_spine,
+                show_right_spine=args.show_right_spine,
+            )
+        )
+    except Exception as exc:  # pragma: no cover - exercised in tests
+        print(f"PLOT_FEATURE_VS_OBS_FAILED: {exc}", file=sys.stderr)
+        return 1
+    print(str(summary["out_prefix"]))
     return 0
 
 
