@@ -234,3 +234,8 @@ Keep the current plotting paths strict after C4/C5:
 - do not broaden into regression overlays or batch screening yet
 - consider label-shape or faceting only if a real use case now requires it
 - avoid heuristic alias resolution beyond explicit `var` column lookup
+
+
+## 2026-04-04 bugfix
+- Fixed feature-vs-feature CLI failure handling for non-categorical numeric label fields.
+- Restored feature-vs-obs workflow compatibility when feature_lookup_col is absent on older callers/tests.

@@ -130,7 +130,7 @@ def run_plot_feature_vs_obs_from_h5(args: argparse.Namespace) -> dict[str, objec
         "input_dataset": str(args.dataset_h5),
         "feature": args.feature,
         "obs_field": args.obs_field,
-        "feature_lookup_col": args.feature_lookup_col,
+        "feature_lookup_col": getattr(args, "feature_lookup_col", None),
         "layer": args.layer,
         "out_prefix": str(out_prefix),
         **plot_summary,

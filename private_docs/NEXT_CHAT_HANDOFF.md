@@ -51,3 +51,8 @@ Current strict behavior:
 - workflow entry point: `clin_omics.workflows.plot_feature_vs_feature_from_h5`
 - CLI entry point: `clin-omics plot-feature-vs-feature`
 - output remains one figure prefix plus one summary JSON per call
+
+
+## 2026-04-04 bugfix
+- Fixed feature-vs-feature CLI failure handling for non-categorical numeric label fields.
+- Restored feature-vs-obs workflow compatibility when feature_lookup_col is absent on older callers/tests.

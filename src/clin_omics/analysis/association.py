@@ -159,7 +159,7 @@ def _is_supported_group_series(values: pd.Series) -> bool:
     unique = int(numeric.nunique())
     n_used = int(non_missing.shape[0])
     if unique <= 2:
-        return True
+        return unique < n_used or unique == 1
     # Treat mostly-unique numeric series as continuous, while allowing repeated
     # numeric labels such as binary / low-cardinality coded groups.
     return unique < n_used
