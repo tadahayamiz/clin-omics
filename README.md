@@ -42,6 +42,11 @@ count matrices:
 - `BulkRNASeqPreprocessor`: convenience wrapper that creates `counts_raw`,
   `counts_filtered`, `cpm`, `log_cpm`, and optional `zscore_log_cpm` layers
 
+Expression matrix QC is intentionally count-matrix-level QC. It does not replace
+FASTQ/BAM-level checks such as fastp/FastQC/RSeQC. It reports lightweight
+sample- and feature-level metrics such as total counts, detected genes, zero
+fraction, top-gene concentration, and sample correlation.
+
 Recommended usage by task:
 
 - DEG / differential expression: keep raw or filtered counts and use an
@@ -161,11 +166,13 @@ Current bulk RNA-seq flows:
 
 - `clin_omics.workflows.bulk_rnaseq_basic`
   - canonical dataset construction
+  - expression matrix QC on the input count matrix
   - bulk RNA-seq preprocessing
   - PCA on `log_cpm`
   - optional k-means and optional UMAP
 - `clin_omics.workflows.bulk_rnaseq_graph`
   - canonical dataset construction
+  - expression matrix QC on the input count matrix
   - bulk RNA-seq preprocessing
   - PCA on `log_cpm`
   - kNN graph + Leiden clustering
@@ -188,6 +195,7 @@ bash scripts/run_bulk_rnaseq_basic.sh   /content/project/assay.csv   /content/pr
 This helper will:
 
 - build a canonical dataset from `X / obs / var`
+- write expression matrix QC tables, JSON, and QC plots from the input count matrix
 - run `BulkRNASeqPreprocessor`
 - run PCA on `log_cpm`
 - run a small k-means clustering on the PCA embedding by default
@@ -199,6 +207,10 @@ Outputs are written under the requested output directory, including:
 - `bulk_rnaseq_basic_input_dataset.h5`
 - `bulk_rnaseq_basic_processed_dataset.h5`
 - `bulk_rnaseq_basic_summary.json`
+- `bulk_rnaseq_expression_qc_sample_qc.csv`
+- `bulk_rnaseq_expression_qc_feature_qc.csv`
+- `bulk_rnaseq_expression_qc_summary.json`
+- `bulk_rnaseq_expression_qc_*.png` / `bulk_rnaseq_expression_qc_*.svg`
 - `cluster_kmeans_basic.csv`
 - `pca_basic.png`
 - `pca_basic.svg`
@@ -243,6 +255,7 @@ Current CLI commands:
 clin-omics version
 clin-omics inspect <dataset.h5>
 clin-omics validate <dataset.h5>
+clin-omics expression-matrix-qc --in <dataset.h5> --outdir <qc_out>
 clin-omics build-dataset --x ... --obs ... --var ... --out ...
 clin-omics pca --in ... --out ...
 clin-omics factor-analysis --in ... --out ...
@@ -293,6 +306,29 @@ clin-omics validate dataset.h5
 Validates that the HDF5 dataset matches the canonical structure.
 On success it prints `VALID`.
 On failure it exits non-zero and prints an error message.
+
+### `expression-matrix-qc`
+
+```bash
+clin-omics expression-matrix-qc \
+  --in dataset.h5 \
+  --outdir qc_out \
+  --counts-layer X \
+  --count-thresholds 5,10 \
+  --cpm-thresholds 1 \
+  --top-n-features 10
+```
+
+Summarizes count-matrix-level RNA-seq QC without re-running FASTQ/BAM-level QC.
+The command writes:
+
+- `<prefix>_sample_qc.csv`
+- `<prefix>_feature_qc.csv`
+- `<prefix>_summary.json`
+- PNG/SVG plots for total counts, detected genes, top-gene fraction, detected genes vs total counts, and sample correlation
+
+Use `--append-obs-out dataset_with_qc_obs.h5` to save a copy of the dataset with
+sample-level `qc_` columns appended to `obs`.
 
 ### `build-dataset`
 

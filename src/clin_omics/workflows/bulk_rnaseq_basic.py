@@ -10,6 +10,7 @@ from clin_omics.export import export_assignments_table
 from clin_omics.io import read_table
 from clin_omics.preprocess import BulkRNASeqPreprocessor
 from clin_omics.visualization import plot_embedding
+from .expression_matrix_qc import write_expression_matrix_qc_report
 
 
 def _normalize_x_table(X, sample_id_col: str):
@@ -126,6 +127,14 @@ def run_basic_flow(args: argparse.Namespace) -> dict[str, object]:
     )
     raw_path = outdir / "bulk_rnaseq_basic_input_dataset.h5"
     dataset.save_h5(raw_path)
+    expression_qc = write_expression_matrix_qc_report(
+        dataset,
+        outdir,
+        prefix="bulk_rnaseq_expression_qc",
+        counts_layer=None,
+        fontsize=args.fontsize,
+        dpi=args.dpi,
+    )
 
     bulk = BulkRNASeqPreprocessor(
         min_count=args.min_count,
@@ -203,6 +212,7 @@ def run_basic_flow(args: argparse.Namespace) -> dict[str, object]:
     summary = {
         "input_dataset": str(raw_path),
         "output_dataset": str(final_path),
+        "expression_qc": expression_qc,
         "n_samples": int(processed.X.shape[0]),
         "n_features": int(processed.X.shape[1]),
         "layers": sorted(processed.layers.keys()),

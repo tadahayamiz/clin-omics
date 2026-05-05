@@ -17,6 +17,7 @@ from clin_omics.analysis import (
 from clin_omics.dataset import CanonicalDataset
 from clin_omics.export import export_assignments_table
 from clin_omics.io import read_dataset_h5, read_table
+from clin_omics.workflows.expression_matrix_qc import run_expression_matrix_qc_flow
 from clin_omics.visualization import (
     plot_confusion_matrix,
     plot_embedding,
@@ -78,6 +79,26 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     validate_parser.add_argument("path", type=Path)
     validate_parser.set_defaults(func=_cmd_validate)
+
+    expression_qc_parser = subparsers.add_parser(
+        "expression-matrix-qc",
+        help="Summarize expression matrix QC from a canonical dataset HDF5 file.",
+    )
+    expression_qc_parser.add_argument("--in", dest="dataset_h5", required=True, type=Path, help="Input dataset .h5 path.")
+    expression_qc_parser.add_argument("--outdir", required=True, type=Path, help="Output directory.")
+    expression_qc_parser.add_argument("--prefix", default="expression_matrix_qc", help="Output filename prefix.")
+    expression_qc_parser.add_argument("--counts-layer", default="X", help="Count-like matrix layer. Use X for dataset.X.")
+    expression_qc_parser.add_argument("--cpm-layer", default=None, help="Optional CPM layer. If omitted, CPM is computed from counts.")
+    expression_qc_parser.add_argument("--count-thresholds", default="5,10", help="Comma-separated count thresholds.")
+    expression_qc_parser.add_argument("--cpm-thresholds", default="1", help="Comma-separated CPM thresholds.")
+    expression_qc_parser.add_argument("--top-n-features", type=int, default=10, help="Number of top genes for concentration metric.")
+    expression_qc_parser.add_argument("--correlation-layer", default=None, help="Optional layer for sample correlation. If omitted, log1p(counts) is used.")
+    expression_qc_parser.add_argument("--append-obs-out", default=None, type=Path, help="Optional output H5 path with QC columns appended to obs.")
+    expression_qc_parser.add_argument("--overwrite-obs-qc", action="store_true", help="Overwrite existing obs QC columns when appending.")
+    expression_qc_parser.add_argument("--no-plots", action="store_true", help="Disable PNG/SVG QC plots.")
+    expression_qc_parser.add_argument("--fontsize", type=float, default=14.0, help="Base font size for QC plots.")
+    expression_qc_parser.add_argument("--dpi", type=int, default=150, help="PNG DPI.")
+    expression_qc_parser.set_defaults(func=_cmd_expression_matrix_qc)
 
     build_parser = subparsers.add_parser(
         "build-dataset",
@@ -242,6 +263,17 @@ def _cmd_validate(args: argparse.Namespace) -> int:
         return 1
 
     print("VALID")
+    return 0
+
+
+def _cmd_expression_matrix_qc(args: argparse.Namespace) -> int:
+    try:
+        summary = run_expression_matrix_qc_flow(args)
+    except Exception as exc:  # pragma: no cover - exercised in tests
+        print(f"EXPRESSION_MATRIX_QC_FAILED: {exc}", file=sys.stderr)
+        return 1
+
+    print(json.dumps(summary, indent=2, sort_keys=True))
     return 0
 
 

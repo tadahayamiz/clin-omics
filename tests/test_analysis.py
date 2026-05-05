@@ -116,3 +116,51 @@ def test_umap_embedding_uses_source_layer(monkeypatch) -> None:
     assert "umap_from_pca" in result.embeddings
     assert result.embeddings["umap_from_pca"].shape == (4, 2)
     assert result.embeddings["umap_from_pca"].index.tolist() == dataset.embeddings["pca"].index.tolist()
+
+
+def test_expression_matrix_qc_reports_sample_and_feature_metrics() -> None:
+    X = pd.DataFrame(
+        {
+            "g1": [10.0, 0.0, 5.0],
+            "g2": [0.0, 0.0, 5.0],
+            "g3": [1.0, 20.0, 0.0],
+        },
+        index=["s1", "s2", "s3"],
+    )
+    obs = pd.DataFrame({"sample_id": ["s1", "s2", "s3"]})
+    var = pd.DataFrame({"feature_id": ["g1", "g2", "g3"]})
+    dataset = CanonicalDataset(X=X, obs=obs, var=var)
+
+    from clin_omics.analysis import summarize_expression_matrix_qc
+
+    result = summarize_expression_matrix_qc(
+        dataset,
+        count_thresholds=(5,),
+        cpm_thresholds=(1,),
+        top_n_features=2,
+        add_warning_flags=False,
+    )
+
+    assert result.sample_qc["sample_id"].tolist() == ["s1", "s2", "s3"]
+    assert result.sample_qc["qc_total_counts"].tolist() == [11.0, 20.0, 10.0]
+    assert result.sample_qc["qc_n_detected_genes_count_gt0"].tolist() == [2, 1, 2]
+    assert result.sample_qc["qc_n_detected_genes_count_ge5"].tolist() == [1, 1, 2]
+    assert "qc_n_detected_genes_cpm_gt1" in result.sample_qc.columns
+    assert result.feature_qc["feature_id"].tolist() == ["g1", "g2", "g3"]
+    assert result.feature_qc["qc_n_detected_samples_count_gt0"].tolist() == [2, 1, 2]
+    assert result.summary["counts_source"] == "X"
+    assert result.summary["n_samples"] == 3
+    assert result.summary["top_n_features"] == 2
+
+
+def test_append_expression_qc_to_obs_adds_qc_columns() -> None:
+    from clin_omics.analysis import append_expression_qc_to_obs, summarize_expression_matrix_qc
+
+    dataset = make_dataset()
+    result = summarize_expression_matrix_qc(dataset, add_warning_flags=True)
+    updated = append_expression_qc_to_obs(dataset, result.sample_qc)
+
+    assert "qc_total_counts" in updated.obs.columns
+    assert "qc_warning_flags" in updated.obs.columns
+    assert updated.obs["sample_id"].tolist() == dataset.obs["sample_id"].tolist()
+    assert updated.X.equals(dataset.X)

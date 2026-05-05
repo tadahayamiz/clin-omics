@@ -103,6 +103,10 @@ def test_bulk_rnaseq_graph_flow_runs_with_fake_leiden_modules(tmp_path, monkeypa
     assert (outdir / "bulk_rnaseq_graph_input_dataset.h5").exists()
     assert (outdir / "bulk_rnaseq_graph_processed_dataset.h5").exists()
     assert (outdir / "bulk_rnaseq_graph_summary.json").exists()
+    assert (outdir / "bulk_rnaseq_expression_qc_sample_qc.csv").exists()
+    assert (outdir / "bulk_rnaseq_expression_qc_feature_qc.csv").exists()
+    assert (outdir / "bulk_rnaseq_expression_qc_summary.json").exists()
+    assert (outdir / "bulk_rnaseq_expression_qc_detected_genes_vs_total_counts.svg").exists()
     assert (outdir / "cluster_leiden_graph.csv").exists()
     assert (outdir / "pca_graph.png").exists()
     assert (outdir / "pca_graph.svg").exists()
@@ -110,6 +114,7 @@ def test_bulk_rnaseq_graph_flow_runs_with_fake_leiden_modules(tmp_path, monkeypa
     summary = json.loads((outdir / "bulk_rnaseq_graph_summary.json").read_text(encoding="utf-8"))
     assert summary["run_umap"] is False
     assert summary["plot_color"] == "cluster_leiden_graph"
+    assert "expression_qc" in summary
     assert "pca_graph" in summary["embeddings"]
     assert "cluster_leiden_graph" in summary["assignments"]
 

@@ -81,10 +81,15 @@ def test_bulk_rnaseq_basic_flow_runs(tmp_path: Path) -> None:
     assert "log_cpm" in summary["layers"]
     assert "pca_basic" in summary["embeddings"]
     assert "cluster_kmeans_basic" in summary["assignments"]
+    assert "expression_qc" in summary
 
     assert (outdir / "bulk_rnaseq_basic_input_dataset.h5").exists()
     assert (outdir / "bulk_rnaseq_basic_processed_dataset.h5").exists()
     assert (outdir / "bulk_rnaseq_basic_summary.json").exists()
+    assert (outdir / "bulk_rnaseq_expression_qc_sample_qc.csv").exists()
+    assert (outdir / "bulk_rnaseq_expression_qc_feature_qc.csv").exists()
+    assert (outdir / "bulk_rnaseq_expression_qc_summary.json").exists()
+    assert (outdir / "bulk_rnaseq_expression_qc_total_counts.png").exists()
     assert (outdir / "cluster_kmeans_basic.csv").exists()
     assert (outdir / "pca_basic.png").exists()
     assert (outdir / "pca_basic.svg").exists()

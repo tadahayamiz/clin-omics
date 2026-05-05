@@ -758,3 +758,70 @@ def test_cli_build_dataset_accepts_index_style_x(tmp_path, capsys) -> None:
     dataset = CanonicalDataset.load_h5(out_path)
     assert dataset.X.index.tolist() == ["s1", "s2"]
     assert dataset.X.columns.tolist() == ["f1", "f2"]
+
+
+def test_cli_expression_matrix_qc_outputs_tables_plots_and_append_obs(tmp_path, capsys) -> None:
+    dataset = _make_dataset()
+    in_path = tmp_path / "toy_expression_qc.h5"
+    outdir = tmp_path / "expression_qc"
+    append_path = tmp_path / "toy_expression_qc_obs.h5"
+    dataset.save_h5(in_path)
+
+    exit_code = main([
+        "expression-matrix-qc",
+        "--in",
+        str(in_path),
+        "--outdir",
+        str(outdir),
+        "--prefix",
+        "toy_qc",
+        "--count-thresholds",
+        "1,5",
+        "--cpm-thresholds",
+        "1",
+        "--top-n-features",
+        "2",
+        "--append-obs-out",
+        str(append_path),
+    ])
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert exit_code == 0
+    assert payload["sample_qc"].endswith("toy_qc_sample_qc.csv")
+    assert (outdir / "toy_qc_sample_qc.csv").exists()
+    assert (outdir / "toy_qc_feature_qc.csv").exists()
+    assert (outdir / "toy_qc_summary.json").exists()
+    assert (outdir / "toy_qc_total_counts.png").exists()
+    assert (outdir / "toy_qc_detected_genes_count_gt0.svg").exists()
+    assert append_path.exists()
+
+    sample_qc = pd.read_csv(outdir / "toy_qc_sample_qc.csv")
+    assert "qc_n_detected_genes_count_gt0" in sample_qc.columns
+    assert "qc_n_detected_genes_count_ge1" in sample_qc.columns
+
+    updated = CanonicalDataset.load_h5(append_path)
+    assert "qc_total_counts" in updated.obs.columns
+    assert "qc_warning_reasons" in updated.obs.columns
+
+
+def test_cli_expression_matrix_qc_rejects_missing_layer(tmp_path, capsys) -> None:
+    dataset = _make_dataset()
+    in_path = tmp_path / "toy_expression_qc_missing.h5"
+    outdir = tmp_path / "expression_qc_missing"
+    dataset.save_h5(in_path)
+
+    exit_code = main([
+        "expression-matrix-qc",
+        "--in",
+        str(in_path),
+        "--outdir",
+        str(outdir),
+        "--counts-layer",
+        "missing_counts",
+    ])
+    captured = capsys.readouterr()
+
+    assert exit_code == 1
+    assert "EXPRESSION_MATRIX_QC_FAILED:" in captured.err
+    assert "Layer 'missing_counts' not found" in captured.err
